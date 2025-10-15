@@ -95,10 +95,23 @@ class StencilGenerator:
         )
 
         # Default negative prompt to avoid unwanted features
+        # self.default_negative_prompt = (
+        #     "color, colorful, photograph, realistic, detailed, complex, "
+        #     "blurry, low quality, watermark, text, cropped, cut off, "
+        #     "partial, multiple subjects, duplicate"
+        # )
+
+        # Simpler stencil prompt suffix (seems to work better) - simplified since post-processing does the heavy lifting
+        # self.stencil_suffix = (
+        #     "black silhouette, high contrast, sketch line drawing, simple, simple stencil design, white background, "
+        #     # "centered in frame, complete object visible, isolated subject"
+        # )
+
+        # Simpler negative prompt (seems to work better) to avoid unwanted features
         self.default_negative_prompt = (
             "color, colorful, photograph, realistic, detailed, complex, "
-            "blurry, low quality, watermark, text, cropped, cut off, "
-            "partial, multiple subjects, duplicate"
+            # "blurry, low quality, watermark, text, cropped, cut off, "
+            # "partial, multiple subjects, duplicate"
         )
 
     def _clean_stencil_image(
@@ -186,38 +199,7 @@ class StencilGenerator:
 
         return cleaned_image
 
-    def _enhance_prompt_for_framing(self, prompt: str) -> str:
-        """
-        Add framing hints to prompts for subjects that commonly get cropped.
-
-        Args:
-            prompt: Original user prompt
-
-        Returns:
-            Enhanced prompt with framing guidance
-        """
-        # Check for subjects that often get cropped
-        common_cropped_subjects = {
-            'bicycle': 'full bicycle with both wheels visible',
-            'bike': 'full bike with both wheels visible',
-            'car': 'full car from side view',
-            'vehicle': 'complete vehicle fully visible',
-            'tree': 'full tree from trunk to top',
-            'giraffe': 'full giraffe from head to feet',
-            'person': 'full body from head to feet',
-            'human': 'full body from head to feet',
-            'building': 'complete building fully visible',
-            'airplane': 'full airplane completely in frame',
-            'plane': 'full plane completely in frame',
-        }
-
-        prompt_lower = prompt.lower()
-        for subject, framing_hint in common_cropped_subjects.items():
-            if subject in prompt_lower:
-                # Add framing hint at the start for emphasis
-                return f"{framing_hint}, {prompt}"
-
-        return prompt
+    
 
     def generate(
         self,
@@ -250,13 +232,12 @@ class StencilGenerator:
         Returns:
             Single PIL Image if num_images=1, otherwise list of PIL Images
         """
-        # Enhance prompt with framing guidance for common subjects
-        enhanced_prompt = self._enhance_prompt_for_framing(prompt)
+
 
         # Construct full prompt
-        full_prompt = enhanced_prompt
+        full_prompt = prompt
         if add_stencil_suffix:
-            full_prompt = f"{enhanced_prompt}, {self.stencil_suffix}"
+            full_prompt = f"{prompt}, {self.stencil_suffix}"
 
         # Use default negative prompt if none provided
         full_negative_prompt = negative_prompt or self.default_negative_prompt

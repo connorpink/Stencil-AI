@@ -7,10 +7,12 @@ Run this file to launch the interactive web interface.
 
 import gradio as gr
 from Stencil import StencilGenerator
+from StencilCV import StencilCV
 import torch
 from typing import Optional
 import numpy as np
 
+MAX_IMAGES = 4
 
 class StencilApp:
     """Wrapper class for the Gradio application."""
@@ -18,6 +20,8 @@ class StencilApp:
     def __init__(self):
         """Initialize the Stencil Generator."""
         self.generator = None
+        self.original_images = []  # Store original images for toggling
+        self.outlined_status = []  # Track which images have outline applied
 
     def load_model(self):
         """Lazy load the model when first needed."""
@@ -33,6 +37,7 @@ class StencilApp:
         self,
         prompt: str,
         negative_prompt: Optional[str],
+        num_images: int,
         num_inference_steps: int,
         guidance_scale: float,
         width: int,
@@ -43,22 +48,22 @@ class StencilApp:
         clean_background: bool
     ):
         """
-        Generate a stencil image based on user inputs.
+        Generate stencil images based on user inputs.
 
         This is the main function called by the Gradio interface.
         """
         if not prompt or prompt.strip() == "":
-            return None, "Please enter a prompt!"
+            return [], "Please enter a prompt!"
 
         try:
             # Load model if not already loaded
             generator = self.load_model()
 
-            # Generate the image
-            image = generator.generate(
+            # Generate the image(s)
+            images = generator.generate(
                 prompt=prompt,
                 negative_prompt=negative_prompt if negative_prompt else None,
-                num_images=1,
+                num_images=num_images,
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
                 width=width,
@@ -68,10 +73,82 @@ class StencilApp:
                 clean_background=clean_background
             )
 
-            return image, "Generation successful!"
+            # Ensure images is a list
+            if not isinstance(images, list):
+                images = [images]
+
+            # Store original images and reset outlined status
+            self.original_images = [img.copy() for img in images]
+            self.outlined_status = [False] * len(images)
+
+            return images, f"Generation successful! Created {len(images)} image(s)."
 
         except Exception as e:
-            return None, f"Error: {str(e)}"
+            return [], f"Error: {str(e)}"
+
+    def apply_outline(self, gallery_data, selected_index):
+        """
+        Toggle outline processing on a selected image using StencilCV.
+        If the image has outline applied, revert to original. Otherwise, apply outline.
+
+        Args:
+            gallery_data: Gallery data from Gradio (list of images or tuples)
+            selected_index: Index of the selected image (from gr.Gallery select event)
+
+        Returns:
+            Updated gallery and status message
+        """
+        # print(f"DEBUG: apply_outline called")
+        # print(f"DEBUG: gallery_data type: {type(gallery_data)}")
+        # print(f"DEBUG: gallery_data length: {len(gallery_data) if gallery_data else 0}")
+        # print(f"DEBUG: selected_index: {selected_index}")
+
+        if not gallery_data:
+            return gallery_data, "No images to process!"
+
+        if selected_index is None:
+            return gallery_data, "Please select an image first by clicking on it!"
+
+        if selected_index >= len(self.original_images):
+            return gallery_data, "Error: Image index out of range!"
+
+        try:
+            # Create a copy of the gallery data
+            updated_gallery = list(gallery_data)
+
+            # Check if this image already has outline applied
+            if self.outlined_status[selected_index]:
+                # Revert to original
+                # print(f"DEBUG: Reverting image {selected_index} to original")
+                updated_gallery[selected_index] = self.original_images[selected_index].copy()
+                self.outlined_status[selected_index] = False
+                return updated_gallery, f"Reverted image {selected_index + 1} to original."
+            else:
+                # Apply outline
+                # print(f"DEBUG: Applying outline to image {selected_index}")
+
+                # Initialize StencilCV processor
+                processor = StencilCV()
+
+                # Get the original image (not the gallery one, to ensure consistency)
+                original_img = self.original_images[selected_index]
+
+                # print(f"DEBUG: Applying edge_stencil...")
+                # Apply outline to the original image
+                outlined = processor.edge_stencil(original_img)
+                # print(f"DEBUG: Outline applied successfully!")
+
+                # Update gallery with outlined version
+                updated_gallery[selected_index] = outlined
+                self.outlined_status[selected_index] = True
+
+                return updated_gallery, f"Applied outline to image {selected_index + 1}. Click again to revert."
+
+        except Exception as e:
+            import traceback
+            print("DEBUG: Exception occurred:")
+            traceback.print_exc()
+            return gallery_data, f"Error applying outline: {str(e)}"
 
 
 def create_interface():
@@ -100,6 +177,15 @@ def create_interface():
                     lines=3
                 )
 
+                num_images = gr.Slider(
+                    minimum=1,
+                    maximum=MAX_IMAGES,
+                    value=1,
+                    step=1,
+                    label="Number of Images",
+                    info="Generate multiple variations to choose from"
+                )
+
                 with gr.Accordion("Advanced Settings", open=False):
                     negative_prompt = gr.Textbox(
                         label="Negative Prompt (optional)",
@@ -108,9 +194,9 @@ def create_interface():
                     )
 
                     add_stencil_suffix = gr.Checkbox(
-                        label="Add stencil styling (recommended)",
+                        label="Add stencil styling suffix(recommended)",
                         value=True,
-                        info="Automatically adds stencil-specific styling to your prompt"
+                        info="Automatically adds stencil-specific styling to your prompt (prompt decorations)"
                     )
 
                     clean_background = gr.Checkbox(
@@ -184,11 +270,14 @@ def create_interface():
                 )
 
             with gr.Column(scale=1):
-                # Output
-                output_image = gr.Image(
-                    label="Generated Stencil",
-                    type="pil",
-                    height=512
+                # Output - Gallery for multiple images
+                output_gallery = gr.Gallery(
+                    label="Generated Stencils (click to select)",
+                    show_label=True,
+                    columns=2,
+                    rows=2,
+                    height="auto",
+                    object_fit="contain"
                 )
                 status_text = gr.Textbox(
                     label="Status",
@@ -196,14 +285,31 @@ def create_interface():
                     lines=1
                 )
 
+                # Hidden state to track selected image
+                selected_image_index = gr.State(value=None)
+
+                # Post-processing section
+                with gr.Accordion("Post-Processing Options", open=False):
+                    gr.Markdown(
+                        """
+                        **Outline Generation**: Click an image above to select it, then click the button below
+                        to toggle outline processing. This creates a line-art effect and works best on images
+                        with clear subjects. Click the button again to revert to the original.
+
+                        You can toggle outline on/off for each image independently to compare styles.
+                        """
+                    )
+                    apply_outline_btn = gr.Button("Toggle Outline on Selected Image", variant="secondary")
+
                 gr.Markdown(
                     """
                     ### Tips for Best Results:
                     - Keep prompts simple and descriptive
+                    - Generate multiple images to see variations
                     - The AI automatically adds stencil styling
                     - Use negative prompts to avoid unwanted features
+                    - Try the outline option after generation for different styles
                     - Higher inference steps = better quality (but slower)
-                    - Images are 512x512 by default (good balance of quality and speed)
                     """
                 )
 
@@ -213,6 +319,7 @@ def create_interface():
             inputs=[
                 prompt,
                 negative_prompt,
+                num_images,
                 num_inference_steps,
                 guidance_scale,
                 width,
@@ -222,7 +329,24 @@ def create_interface():
                 add_stencil_suffix,
                 clean_background
             ],
-            outputs=[output_image, status_text]
+            outputs=[output_gallery, status_text]
+        )
+
+        # Track when user selects an image in the gallery
+        def update_selection(evt: gr.SelectData):
+            print(f"DEBUG: Gallery selection event - index: {evt.index}")
+            return evt.index
+
+        output_gallery.select(
+            fn=update_selection,
+            outputs=selected_image_index
+        )
+
+        # Connect the outline button
+        apply_outline_btn.click(
+            fn=app.apply_outline,
+            inputs=[output_gallery, selected_image_index],
+            outputs=[output_gallery, status_text]
         )
 
         gr.Markdown(
@@ -262,4 +386,4 @@ def launch(
 if __name__ == "__main__":
     # Launch with default settings
     # Set share=True to create a public link
-    launch(share=False)
+    launch(share=True, pwa=True)

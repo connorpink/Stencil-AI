@@ -2,6 +2,18 @@
 
 This guide explains how to deploy the Stencil Image Generator with Gradio.
 
+## Features
+
+The Stencil Generator web app includes:
+
+- **AI-Powered Stencil Generation**: Generate black and white stencil images using Stable Diffusion
+- **Multiple Image Variants**: Generate 1-4 image variations at once to choose from
+- **Post-Processing Options**:
+  - Toggle outline effect on individual images using computer vision (StencilCV)
+  - Compare original and outlined versions side-by-side
+- **Advanced Controls**: Adjust inference steps, guidance scale, image dimensions, seeds, and more
+- **Clean UI**: Simple interface with collapsible advanced settings
+
 ## Local Deployment
 
 ### Prerequisites
@@ -12,6 +24,10 @@ pip install -r requirements.txt
 ```
 
 2. Ensure you have sufficient disk space (the Stable Diffusion model is ~5GB)
+3. Ensure OpenCV is installed for outline post-processing:
+```bash
+pip install opencv-python
+```
 
 ### Running Locally
 
@@ -44,8 +60,10 @@ Or modify [app.py:267](app.py#L267) to set `share=True` by default.
 3. Upload these files:
    - `app.py`
    - `Stencil.py`
+   - `StencilCV.py`
    - `requirements.txt`
-4. The Space will automatically deploy
+4. Ensure `opencv-python` is in requirements.txt
+5. The Space will automatically deploy
 
 ### Google Colab
 
@@ -73,6 +91,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY Stencil.py .
+COPY StencilCV.py .
 COPY app.py .
 
 # Expose port
@@ -156,6 +175,32 @@ generator = StencilGenerator(
 - Consider rate limiting for public deployments
 - Monitor GPU usage and set resource limits
 
+## Using the Web Interface
+
+### Generating Stencils
+
+1. Enter a text prompt (e.g., "a cat sitting", "a tree with spreading branches")
+2. Adjust the "Number of Images" slider (1-4) to generate multiple variations
+3. Optionally expand "Advanced Settings" to fine-tune generation parameters
+4. Click "Generate Stencil" and wait for the images to appear
+
+### Post-Processing with Outline Effect
+
+After generating images, you can apply an outline effect to individual images:
+
+1. Click on an image in the gallery to select it
+2. Expand "Post-Processing Options"
+3. Click "Toggle Outline on Selected Image"
+4. The selected image will be replaced with an outlined version
+5. Click the button again to revert to the original
+6. Repeat for other images to compare styles
+
+**Tips:**
+- The outline effect creates a line-art style using edge detection
+- Works best on images with clear subjects and defined edges
+- Each image can be toggled independently
+- Original images are preserved, so you can always revert back
+
 ## API Access
 
 Gradio automatically provides an API endpoint. After launching, visit:
@@ -167,7 +212,21 @@ Use the API programmatically:
 from gradio_client import Client
 
 client = Client("http://localhost:7860")
-result = client.predict("a cat sitting", api_name="/predict")
+# Generate stencil images
+result = client.predict(
+    "a cat sitting",  # prompt
+    "",  # negative_prompt
+    2,   # num_images
+    25,  # num_inference_steps
+    7.5, # guidance_scale
+    512, # width
+    512, # height
+    42,  # seed
+    False, # use_seed
+    True,  # add_stencil_suffix
+    True,  # clean_background
+    api_name="/predict"
+)
 ```
 
 ## Additional Resources
