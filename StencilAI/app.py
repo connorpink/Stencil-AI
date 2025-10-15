@@ -106,8 +106,12 @@ class StencilApp:
         if not gallery_data:
             return gallery_data, "No images to process!"
 
+        # If there's only 1 image and no selection, default to index 0
         if selected_index is None:
-            return gallery_data, "Please select an image first by clicking on it!"
+            if len(self.original_images) == 1:
+                selected_index = 0
+            else:
+                return gallery_data, "Please select an image first by clicking on it!"
 
         if selected_index >= len(self.original_images):
             return gallery_data, "Error: Image index out of range!"
@@ -180,7 +184,7 @@ def create_interface():
                 num_images = gr.Slider(
                     minimum=1,
                     maximum=MAX_IMAGES,
-                    value=1,
+                    value=2,
                     step=1,
                     label="Number of Images",
                     info="Generate multiple variations to choose from"
