@@ -15,7 +15,7 @@ stencil = processor.auto_stencil("photo.jpg", style='outline')
 processor.save(stencil, "output_stencil.png")
 ```
 #### Sample
-![Conversion Example](./StencilAI/Source%20Image%20Sample/cat%20raw->outline.excalidraw.png)
+![Conversion Example](./StencilAI/Source%20Image%20Sample/cat%20raw_to_outline.excalidraw.png)
 
 **Pros:**
 -  Very fast (~0.1 seconds)
