@@ -1,168 +1,263 @@
-# Stencil-AI: Drawing Stencil Image Generator
+# Stencil-AI
 
-Generate black and white drawing stencil images using pretrained Stable Diffusion models with prompt engineering.
+Generate clean, print-ready stencils using AI or traditional computer vision.
 
-## Overview
+## Two Approaches
 
-This project uses open-source Stable Diffusion models to generate stencil-style images. By automatically appending stencil-specific prompt decorations like "drawing stencil black and white", it guides the model to produce high-contrast, simple line drawings suitable for stenciling.
+###  **StencilCV.py** - Computer Vision Approach 
+Convert existing images to stencils using classical CV techniques. [More info here](./StencilAI/STENCILCV_GUIDE.md)
+
+```python
+from StencilCV import StencilCV
+
+processor = StencilCV()
+stencil = processor.auto_stencil("photo.jpg", style='filled')
+processor.save(stencil, "output_stencil.png")
+```
+#### Sample
+![Conversion Example](./StencilAI/Source%20Image%20Sample/cat%20raw->outline.excalidraw.png)
+
+**Pros:**
+-  Very fast (~0.1 seconds)
+-  Deterministic - same input = same output
+-  Guaranteed clean black/white output
+-  No GPU required
+- Full control over parameters
+
+**Cons:**
+- Requires input images
+- Quality depends on input
+
+**Best for:** Converting photos/drawings to stencils, batch processing
+
+---
+
+###  **Stencil.py** - AI-Powered Generationv
+Generate stencils from text descriptions using Stable Diffusion.
+
+```python
+from Stencil import StencilGenerator
+
+generator = StencilGenerator()
+stencil = generator.generate("a cat sitting")
+generator.save_image(stencil, "cat_stencil.png")
+```
+
+**Pros:**
+- Create designs from text prompts
+- No input images needed
+- Generate original artwork
+
+**Cons:**
+- Slower (~10-30 seconds)
+- Unpredictable results
+- May crop subjects or generate multiple objects
+- Requires GPU (recommended)
+
+**Best for:** Creating new designs from imagination
+
+---
+### Stencil AI-Gen with CV outline
+![GenTree-Conversion](./StencilAI/stencilGen_to_stencilCV.excalidraw.png)
 
 ## Installation
 
-1. **Clone or navigate to this repository**
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-   Note: This will download PyTorch, Hugging Face Diffusers, and other required packages. If you have a CUDA-capable GPU, PyTorch will automatically use it for faster generation.
-
-## Quick Start
-
-### Basic Usage
-
-```python
-from Stencil import StencilGenerator
-
-# Initialize the generator
-generator = StencilGenerator()
-
-# Generate a stencil image
-image = generator.generate("a cat sitting")
-
-# Save the image
-generator.save_image(image, "cat_stencil.png")
-```
-
-### Generate and Save in One Step
-
-```python
-from Stencil import StencilGenerator
-
-generator = StencilGenerator()
-
-# Generate and save directly
-generator.generate_and_save(
-    prompt="a tree with spreading branches",
-    output_path="tree_stencil.png",
-    seed=42  # For reproducible results
-)
-```
-
-### Run the Example Script
-
-The module includes example usage that generates multiple stencils:
-
 ```bash
-python Stencil.py
+# Clone the repository
+git clone <repo-url>
+cd Stencil-AI
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-This will create an `output_stencils/` directory with sample stencil images.
-
-## Features
-
-### Automatic Prompt Enhancement
-
-The generator automatically appends stencil-specific styling to your prompts:
-- "drawing stencil, black and white, high contrast"
-- "simple lines, silhouette style, clean edges"
-- "no shading, flat design, vector art style"
-
-### Negative Prompts
-
-Automatically excludes unwanted features:
-- Color and shading
-- Photorealistic details
-- Gradients and complexity
-
-### Customization Options
-
-```python
-generator = StencilGenerator(
-    model_id="stabilityai/stable-diffusion-2-1-base",  # Different SD model
-    device="cuda",  # or "cpu"
-    use_fp16=True   # Half precision for faster inference
-)
-
-image = generator.generate(
-    prompt="a bicycle",
-    num_images=4,              # Generate multiple variations
-    num_inference_steps=30,    # More steps = better quality (slower)
-    guidance_scale=7.5,        # How strongly to follow prompt (7-8.5 recommended)
-    width=512,                 # Image dimensions
-    height=512,
-    seed=42,                   # For reproducibility
-    add_stencil_suffix=True    # Enable/disable automatic prompt enhancement
-)
+### Minimal Install (CV only)
+If you only want StencilCV (no AI):
+```bash
+pip install opencv-python numpy pillow
 ```
 
-## Hardware Requirements
-
-- **CPU**: Works but slow (~2-5 minutes per image)
-- **GPU (CUDA)**: Recommended (~10-30 seconds per image)
-  - Minimum 6GB VRAM for 512x512 images
-  - 8GB+ VRAM recommended for larger images
-
-### Memory Optimizations
-
-If you encounter out-of-memory errors, uncomment this line in [Stencil.py:63](Stencil.py#L63):
-
-```python
-self.pipe.enable_vae_slicing()
-```
-
-## Model Options
-
-The default model is `stabilityai/stable-diffusion-2-1-base`. You can use other Stable Diffusion models from Hugging Face:
-
-```python
-# Stable Diffusion 1.5 (lighter, faster)
-generator = StencilGenerator(model_id="runwayml/stable-diffusion-v1-5")
-
-# Stable Diffusion 2.1 (higher quality)
-generator = StencilGenerator(model_id="stabilityai/stable-diffusion-2-1")
-
-# Other community models
-generator = StencilGenerator(model_id="prompthero/openjourney")
-```
-
-## Output Examples
-
-The generator produces:
-- High contrast black and white images
-- Simple, clean line art suitable for cutting stencils
-- Flat designs without shading or gradients
-- Various subjects: objects, animals, plants, etc.
-
-## Tips for Better Results
-
-1. **Keep prompts simple**: "a cat" works better than "a detailed photorealistic cat with fur texture"
-2. **Describe the subject clearly**: Focus on the main object/shape
-3. **Adjust guidance_scale**:
-   - Lower (5-7): More creative, varied results
-   - Higher (7.5-10): Stricter adherence to prompt
-4. **Generate multiple images**: Set `num_images=4` to get variations and pick the best
-5. **Use seeds**: Save the seed value of good results for consistency
-
-## Troubleshooting
-
-**Import warnings in IDE**: These warnings appear because packages aren't installed yet. Run:
+### Full Install (AI + CV)
+For both approaches:
 ```bash
 pip install -r requirements.txt
 ```
 
-**CUDA out of memory**: Reduce image size or enable VAE slicing (see Memory Optimizations above)
+## Quick Start
 
-**Slow generation on CPU**: Consider using a cloud GPU service like Google Colab or reducing `num_inference_steps`
+### StencilCV (Traditional CV) 
+
+```python
+from StencilCV import StencilCV
+
+processor = StencilCV()
+
+# Three stencil styles:
+
+# 1. Filled silhouette (most common)
+filled = processor.auto_stencil('photo.jpg', style='filled')
+processor.save(filled, 'filled.png')
+
+# 2. Outline/edges (line art)
+outline = processor.auto_stencil('photo.jpg', style='outline')
+processor.save(outline, 'outline.png')
+
+# 3. Hybrid (edges + fill)
+hybrid = processor.auto_stencil('photo.jpg', style='hybrid')
+processor.save(hybrid, 'hybrid.png')
+```
+
+**See [STENCILCV_GUIDE.md](./StencilAI/STENCILCV_GUIDE.md) for complete documentation**
+
+### Stencil.py (AI Generation)
+
+```python
+from Stencil import StencilGenerator
+
+generator = StencilGenerator()
+
+# Generate from text
+stencil = generator.generate("a bicycle")
+generator.save_image(stencil, "bicycle.png")
+
+# Multiple images with different seeds
+for i in range(5):
+    stencil = generator.generate("a cat", seed=42+i)
+    generator.save_image(stencil, f"cat_{i}.png")
+```
+
+**See [APPROACH.md](./StencilAI/APPROACH.md) for limitations and best practices**
+
+## Hybrid Workflow (Best Results)
+
+Combine both for best results: AI generates, CV perfects.
+
+```python
+from Stencil import StencilGenerator
+from StencilCV import StencilCV
+
+# Generate with AI
+ai_gen = StencilGenerator()
+ai_image = ai_gen.generate("a tree", clean_background=False)
+
+# Perfect with CV
+cv_proc = StencilCV()
+final_stencil = cv_proc.silhouette_stencil(ai_image)
+cv_proc.save(final_stencil, "tree_perfect.png")
+```
+
+## Which Approach Should I Use?
+
+### Use **StencilCV** when:
+-  You have existing images to convert
+-  You need fast, batch processing
+-  You want predictable, consistent results
+-  You don't have a GPU
+-  Quality and precision matter
+
+### Use **Stencil.py (AI)** when:
+-  You need to generate from text descriptions
+-  You don't have input images
+-  You're exploring creative ideas
+-  You have a GPU available
+
+### Use **Both (Hybrid)** when:
+-  You want the best quality
+-  AI generates, CV perfects
+-  You have time for two-step process
+
+## Documentation
+
+- **[STENCILCV_GUIDE.md](./StencilAI/STENCILCV_GUIDE.md)** - Complete guide for traditional CV approach 
+- **[APPROACH.md](./StencilAI/APPROACH.md)** - AI approach, limitations, and workarounds
+- **[DEPLOYMENT.md](./StencilAI/DEPLOYMENT.md)** - Deploy the Gradio web interface
+
+## Web Interface (AI Only)
+
+Launch a web UI for the AI generator:
+
+```bash
+python app.py
+```
+
+Then open http://localhost:7860 in your browser.
+
+## Hardware Requirements
+
+### For StencilCV:
+- Any modern CPU
+- 4GB+ RAM
+- No GPU required
+
+### For Stencil.py (AI):
+- CPU: Works but slow (~2-5 minutes per image)
+- GPU (CUDA): Recommended (~10-30 seconds per image)
+  - Minimum 6GB VRAM for 512x512 images
+  - 8GB+ VRAM recommended
+
+## Examples
+
+Run the example scripts:
+
+```bash
+# AI examples
+python Stencil.py
+
+# CV examples
+python StencilCV.py
+```
+
+## Performance Comparison
+
+| Operation | StencilCV | Stencil.py (AI) |
+|-----------|-----------|-----------------|
+| Single image | ~0.1s | ~10-30s |
+| 100 images | ~10s | ~30-50 minutes |
+| GPU required | No | Recommended |
+| Memory usage | ~200MB | ~5GB+ |
+
+## Tips for Best Results
+
+### StencilCV Tips:
+1. Use high-quality, well-lit input images
+2. Simple backgrounds work best
+3. Start with `auto_stencil()` then customize
+4. Try different styles: 'filled', 'outline', 'hybrid'
+
+### AI Tips:
+1. Keep prompts simple: "a cat" not "a majestic feline creature"
+2. Generate multiple images (different seeds)
+3. Use wider aspect ratios for wide subjects: `width=640, height=512`
+4. Always use `clean_background=True`
+5. Consider using AI → CV hybrid workflow
+
+## Troubleshooting
+
+### Import errors
+```bash
+pip install --upgrade opencv-python numpy pillow
+```
+
+### AI model won't load
+```bash
+# Check GPU availability
+python -c "import torch; print(torch.cuda.is_available())"
+```
+
+### StencilCV produces noisy output
+```python
+# Increase noise removal
+stencil = processor.silhouette_stencil(
+    'image.jpg',
+    remove_small_objects=2000,  # Increase this
+    smooth_edges=True
+)
+```
 
 ## License
 
 This project uses open-source models and libraries. Check individual model licenses on Hugging Face for commercial use restrictions.
 
-## Next Steps
+---
 
-To improve results further, consider:
-1. Fine-tuning the model on actual stencil images
-2. Adding post-processing (edge detection, thresholding)
-3. Experimenting with different SD models
-4. Creating a web interface for easier generation
+**Recommendation:** Start with **StencilCV** for reliable, fast results. Use AI when you need to generate designs from text.

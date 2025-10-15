@@ -1,0 +1,18 @@
+torch>=2.0.0
+diffusers>=0.21.0
+transformers>=4.30.0
+accelerate>=0.20.0
+safetensors>=0.3.0
+gradio>=4.0.0
+numpy>=1.24.0
+Pillow>=9.0.0
+scipy>=1.10.0
+scikit-image>=0.20.0
+opencv-python>=4.8.0
+
+# Note: Pillow, numpy, scipy, scikit-image required for AI-based post-processing
+# opencv-python required for StencilCV (traditional computer vision approach)
+
+# Tested with:
+# torch==2.4.1, diffusers==0.30.3, transformers==4.44.2
+# accelerate==1.1.1, safetensors==0.4.5, gradio==4.44.0
