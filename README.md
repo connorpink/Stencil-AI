@@ -11,7 +11,7 @@ Convert existing images to stencils using classical CV techniques. [More info he
 from StencilCV import StencilCV
 
 processor = StencilCV()
-stencil = processor.auto_stencil("photo.jpg", style='filled')
+stencil = processor.auto_stencil("photo.jpg", style='outline')
 processor.save(stencil, "output_stencil.png")
 ```
 #### Sample
