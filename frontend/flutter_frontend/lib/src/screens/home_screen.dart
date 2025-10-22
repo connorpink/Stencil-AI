@@ -24,6 +24,10 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
+  void _openDrawing(String name) async {
+    Navigator.pushNamed(context, '/draw', arguments: name);
+  }
+
   void _deleteDrawing(String name) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -48,7 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final drawingNames = _drawingBox.keys.cast<String>().toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Art Gallery'),
@@ -63,76 +66,10 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         ],
       ),
-      body: ValueListenableBuilder(
-        valueListenable: _drawingBox.listenable(), 
-        builder: (context, _, __) {
-          final items = _drawingBox.values.toList();
-          if (items.isEmpty) {
-            return const Center(child: Text('No drawings yet'));
-          }
-          else {
-            return GridView.builder(
-              padding: const EdgeInsets.all(8),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: drawingNames.length,
-              itemBuilder: (context, index) {
-                final name = drawingNames[index];
-                final data = _drawingBox.get(name) as Map;
-                final thumbnail = data['thumbnail'] as Uint8List;
-                return Stack(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/draw',
-                          arguments: name
-                        );
-                      },
-                      child: Card (
-                        elevation: 4,
-                        child: Column (
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: Image.memory(
-                                thumbnail,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Padding (
-                              padding: const EdgeInsets.all(5),
-                              child: Text(
-                                name,
-                                textAlign: TextAlign.center,
-                                style: TextStyle (
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold
-                                ),
-                              )
-                            )
-                          ]
-                        )
-                      ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: IconButton(
-                        onPressed: () => _deleteDrawing(name),
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                      )
-                    ),
-                  ]
-                );
-              }
-            );
-          }
-        },
+      body: DrawingCollection(
+        collection: _drawingBox,
+        openDrawing:  _openDrawing,
+        deleteDrawing: _deleteDrawing,
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.draw),
@@ -141,6 +78,98 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {});
         },
       ),
+    );
+  }
+}
+
+
+
+// Widget for displaying a collection of drawings in a dynamic grid layout
+class DrawingCollection extends StatelessWidget {
+  final Box<Map<dynamic, dynamic>> collection;
+  final void Function(String name)? openDrawing;
+  final void Function(String name)? deleteDrawing;
+
+  const DrawingCollection({
+    super.key,
+    required this.collection,
+    this.openDrawing,
+    this.deleteDrawing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: collection.listenable(),
+      builder: (context, _, __) {
+        final drawingNames = collection.keys.cast<String>().toList();
+        final items = collection.values.toList();
+        if (items.isEmpty) {
+          return const Center(child: Text('No drawings yet'));
+        }
+        else {
+          return GridView.builder(
+            padding: const EdgeInsets.all(8),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: drawingNames.length,
+            itemBuilder: (context, index) {
+              final name = drawingNames[index];
+              final data = collection.get(name) as Map;
+              final thumbnail = data['thumbnail'] as Uint8List;
+              return Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/draw',
+                        arguments: name
+                      );
+                    },
+                    child: Card (
+                      elevation: 4,
+                      child: Column (
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: Image.memory(
+                              thumbnail,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Padding (
+                            padding: const EdgeInsets.all(5),
+                            child: Text(
+                              name,
+                              textAlign: TextAlign.center,
+                              style: TextStyle (
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold
+                              ),
+                            )
+                          )
+                        ]
+                      )
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: IconButton(
+                      onPressed: () => deleteDrawing?.call(name),
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                    )
+                  ),
+                ]
+              );
+            }
+          );
+        }
+      },
     );
   }
 }
