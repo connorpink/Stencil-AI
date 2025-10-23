@@ -7,9 +7,9 @@ Generate clean, print-ready stencils using AI or traditional computer vision.
 ###  **Stencil.py** - AI-Powered Generation
 Generate stencils from text descriptions using Stable Diffusion. Now supports **fine-tuned models** trained specifically on sketch-style images!
 
-***Test using "a Tree with spreading branches" prompt***
-![Showing comparison of models](./StencilAI/Source%20Image%20Sample/Tree_SD_vs_fineTuned.png)
-
+>  ***Test using "a Tree with spreading branches" prompt***
+>  - ***text decoration*** vs ***fine-tuning***
+>  ![Showing comparison of models](./StencilAI/Source%20Image%20Sample/Tree_SD_vs_fineTuned.png )
 
 
 ---
