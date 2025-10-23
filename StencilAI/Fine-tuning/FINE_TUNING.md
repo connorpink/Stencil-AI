@@ -47,10 +47,10 @@ Even with careful prompting, results can be inconsistent and may include unwante
 ### Benefits of Fine-Tuning
 
 With a fine-tuned model:
--  **Simpler prompts**: Just `"sketch of a cat"` produces sketch-style results
--  **Consistency**: Every generation follows the sketch aesthetic learned from training
--  **No negative prompts needed**: The model inherently understands the desired style
--  **Better quality**: Model has learned the exact visual patterns we want
+-  **Simpler prompts**: Just `"sketch of a cat"` produces sketch-style results
+-  **Consistency**: Every generation follows the sketch aesthetic learned from training
+-  **No negative prompts needed**: The model inherently understands the desired style
+-  **Better quality**: Model has learned the exact visual patterns we want
 
 ---
 
