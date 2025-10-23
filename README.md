@@ -81,12 +81,13 @@ generator.save_image(stencil, "cat_sketch.png")
 **Standard SD 2.1** (Default):
 Standard StableDiffusion v1.5 text decoration
 -  Results can be inconsistent
-![MountainRangeSD2.1](./StencilAI/Source%20Image%20Sample/Mountains_TextDecorated.png)
+![MountainRangeSD2.1](./StencilAI/Source%20Image%20Sample/Mountains_TextDecorated_cropped.png)
+
 **Fine-Tuned Model** :
 -  Trained on 50,000+ sketch images (ImageNet-Sketch dataset)
 -  Simple prompts work well (e.g., "a cat" → "sketch of a cat")
 -  Consistent accurate sketch-style outputs
-![MountainRangeFineTuned](./StencilAI/Source%20Image%20Sample/Mountains_fineTuned.png)
+![MountainRangeFineTuned](./StencilAI/Source%20Image%20Sample/Mountains_fineTuned_cropped.png)
 
 
 

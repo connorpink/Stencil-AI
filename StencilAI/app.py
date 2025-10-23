@@ -202,7 +202,7 @@ def create_interface():
 
                 model_selector = gr.Radio(
                     choices=["Standard SD 2.1", "Checkpoint-500", "Checkpoint-1000"],
-                    value="Standard SD 2.1",
+                    value="Checkpoint-1000",
                     label="Model Type",
                     info="Choose between standard model or fine-tuned checkpoints (trained on sketch-style images)"
                 )
