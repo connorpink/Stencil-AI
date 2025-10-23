@@ -4,6 +4,45 @@ Generate clean, print-ready stencils using AI or traditional computer vision.
 
 ## Two Approaches
 
+###  **Stencil.py** - AI-Powered Generation
+Generate stencils from text descriptions using Stable Diffusion. Now supports **fine-tuned models** trained specifically on sketch-style images!
+
+***Test using "a Tree with spreading branches" prompt***
+![Showing comparison of models](./StencilAI/Source%20Image%20Sample/Tree_SD_vs_fineTuned.png)
+
+
+```python
+from Stencil import StencilGenerator
+
+# Option 1: Standard SD 2.1 (detailed prompt engineering)
+generator = StencilGenerator()
+stencil = generator.generate("a cat sitting")
+
+# Option 2: Fine-tuned checkpoint (simple prompts, sketch-style)
+generator = StencilGenerator(checkpoint_path="./Fine-tuning/checkpoint-1000")
+stencil = generator.generate("a cat")  # Automatically becomes "sketch of a cat"
+generator.save_image(stencil, "cat_sketch.png")
+```
+
+#### **Two Model Options:**
+
+**Standard SD 2.1** (Default):
+Standard StableDiffusion v1.5 text decoration
+-  Results can be inconsistent
+![MountainRangeSD2.1](./StencilAI/Source%20Image%20Sample/Mountains_TextDecorated.png)
+**Fine-Tuned Model** :
+-  Trained on 50,000+ sketch images (ImageNet-Sketch dataset)
+-  Simple prompts work well (e.g., "a cat" → "sketch of a cat")
+-  Consistent accurate sketch-style outputs
+![MountainRangeFineTuned](./StencilAI/Source%20Image%20Sample/Mountains_fineTuned.png)
+
+
+---
+### Stencil AI-Gen with CV outline
+![GenTree-Conversion](./StencilAI/stencilGen_to_stencilCV.excalidraw.png)
+
+---
+
 ###  **StencilCV.py** - Computer Vision Approach 
 Convert existing images to stencils using classical CV techniques. [More info here](./StencilAI/STENCILCV_GUIDE.md)
 
@@ -29,36 +68,31 @@ processor.save(stencil, "output_stencil.png")
 - Quality depends on input
 
 **Best for:** Converting photos/drawings to stencils, batch processing
-
 ---
 
-###  **Stencil.py** - AI-Powered Generationv
-Generate stencils from text descriptions using Stable Diffusion.
+## AI Model Comparison
 
-```python
-from Stencil import StencilGenerator
+### Standard SD 2.1 vs Fine-Tuned Checkpoints
 
-generator = StencilGenerator()
-stencil = generator.generate("a cat sitting")
-generator.save_image(stencil, "cat_stencil.png")
-```
+The project now includes fine-tuned models trained specifically on sketch-style images. Here's how they compare:
 
-**Pros:**
-- Create designs from text prompts
-- No input images needed
-- Generate original artwork
+| Feature | Standard SD 2.1 | Fine-Tuned Checkpoint-1000 |
+|---------|-----------------|----------------------------|
+| **Prompt Style** | `"a cat, black silhouette, high contrast, simple stencil design..."` | `"a cat"` (auto: `"sketch of a cat"`) |
+| **Negative Prompts** | Required for best results | Not needed |
+| **Output Style** | Stencil-like (with post-processing) | Inherent sketch style |
+| **Consistency** | Variable | Very consistent |
+| **Training Data** | General internet images | 50,000+ ImageNet-Sketch images |
+| **Best Use** | Maximum customization & control | Quick, reliable sketch generation |
 
-**Cons:**
-- Slower (~10-30 seconds)
-- Unpredictable results
-- May crop subjects or generate multiple objects
-- Requires GPU (recommended)
+### Visual Comparison
 
-**Best for:** Creating new designs from imagination
+When generating with the same simple prompt `"a cat"`:
+
+
+**See [Fine-tuning/FINE_TUNING.md](./StencilAI/Fine-tuning/FINE_TUNING.md) for complete documentation on the fine-tuning process, training details, and model selection.**
 
 ---
-### Stencil AI-Gen with CV outline
-![GenTree-Conversion](./StencilAI/stencilGen_to_stencilCV.excalidraw.png)
 
 ## Installation
 
@@ -114,19 +148,24 @@ processor.save(hybrid, 'hybrid.png')
 ```python
 from Stencil import StencilGenerator
 
+# Option 1: Standard SD 2.1 (default)
 generator = StencilGenerator()
-
-# Generate from text
 stencil = generator.generate("a bicycle")
 generator.save_image(stencil, "bicycle.png")
 
+# Option 2: Fine-tuned checkpoint (sketch-style)
+generator_ft = StencilGenerator(checkpoint_path="./Fine-tuning/checkpoint-1000")
+sketch = generator_ft.generate("a bicycle")  # Auto: "sketch of a bicycle"
+generator_ft.save_image(sketch, "bicycle_sketch.png")
+
 # Multiple images with different seeds
 for i in range(5):
-    stencil = generator.generate("a cat", seed=42+i)
-    generator.save_image(stencil, f"cat_{i}.png")
+    stencil = generator_ft.generate("a cat", seed=42+i)
+    generator_ft.save_image(stencil, f"cat_sketch_{i}.png")
 ```
 
 **See [APPROACH.md](./StencilAI/APPROACH.md) for limitations and best practices**
+**See [Fine-tuning/FINE_TUNING.md](./StencilAI/Fine-tuning/FINE_TUNING.md) for fine-tuned model documentation**
 
 ## Hybrid Workflow (Best Results)
 
@@ -168,19 +207,28 @@ cv_proc.save(final_stencil, "tree_perfect.png")
 
 ## Documentation
 
-- **[STENCILCV_GUIDE.md](./StencilAI/STENCILCV_GUIDE.md)** - Complete guide for traditional CV approach 
+- **[STENCILCV_GUIDE.md](./StencilAI/STENCILCV_GUIDE.md)** - Complete guide for traditional CV approach
 - **[APPROACH.md](./StencilAI/APPROACH.md)** - AI approach, limitations, and workarounds
+- **[Fine-tuning/FINE_TUNING.md](./StencilAI/Fine-tuning/FINE_TUNING.md)** - Fine-tuning process, training details, and checkpoint selection
 - **[DEPLOYMENT.md](./StencilAI/DEPLOYMENT.md)** - Deploy the Gradio web interface
 
 ## Web Interface (AI Only)
 
-Launch a web UI for the AI generator:
+Launch a web UI for the AI generator with model selection:
 
 ```bash
+cd StencilAI
 python app.py
 ```
 
 Then open http://localhost:7860 in your browser.
+
+**Features:**
+- Choose between **Standard SD 2.1**, **Checkpoint-500**, or **Checkpoint-1000**
+- Simple prompt input (fine-tuned models auto-add "sketch of" prefix)
+- Generate multiple variations
+- Post-processing options (background cleaning, outline generation)
+- Download generated stencils
 
 ## Hardware Requirements
 
@@ -225,11 +273,23 @@ python StencilCV.py
 4. Try different styles: 'filled', 'outline', 'hybrid'
 
 ### AI Tips:
-1. Keep prompts simple: "a cat" not "a majestic feline creature"
-2. Generate multiple images (different seeds)
-3. Use wider aspect ratios for wide subjects: `width=640, height=512`
-4. Always use `clean_background=True`
-5. Consider using AI → CV hybrid workflow
+
+**For Standard SD 2.1:**
+1. Keep prompts descriptive but simple
+2. Use negative prompts to avoid unwanted features
+3. Always use `clean_background=True`
+4. Generate multiple images (different seeds) to find best result
+
+**For Fine-Tuned Checkpoints:**
+1. Use very simple prompts: "a cat" not "a majestic feline creature"
+2. No need for negative prompts
+3. **Checkpoint-1000 recommended** for most use cases (best balance)
+4. Checkpoint-500 for more experimental/varied results
+
+**General:**
+1. Use wider aspect ratios for wide subjects: `width=640, height=512`
+2. Generate multiple images (different seeds) for variety
+3. Consider using AI → CV hybrid workflow for best quality
 
 ## Troubleshooting
 
@@ -260,4 +320,3 @@ This project uses open-source models and libraries. Check individual model licen
 
 ---
 
-**Recommendation:** Start with **StencilCV** for reliable, fast results. Use AI when you need to generate designs from text.

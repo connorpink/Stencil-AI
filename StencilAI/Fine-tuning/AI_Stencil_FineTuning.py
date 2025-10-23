@@ -27,24 +27,50 @@ from torchvision import transforms
 
 
 class ImageNetSketchDataset(Dataset):
-    """Dataset for ImageNet-Sketch images"""
+    """Dataset for ImageNet-Sketch images with proper synset label mapping"""
     
-    def __init__(self, data_dir, resolution=512, max_samples=None):
+    def __init__(self, data_dir, resolution=512, max_samples=None, synset_mapping_file='imagenet_synset_to_label.json'):
         self.data_dir = Path(data_dir)
         self.resolution = resolution
+        
+        # Load or create synset to label mapping
+        print(f"Loading synset to label mapping...")
+        if os.path.exists(synset_mapping_file):
+            with open(synset_mapping_file, 'r') as f:
+                self.synset_to_label = json.load(f)
+            print(f"✓ Loaded {len(self.synset_to_label)} mappings from {synset_mapping_file}")
+        else:
+            print(f"Mapping file not found. Creating from ImageNet class index...")
+            self.synset_to_label = self._download_synset_mapping(synset_mapping_file)
         
         # Find all image files
         self.image_paths = []
         self.class_names = []
         
-        print(f"Loading dataset from: {self.data_dir}")
+        print(f"\nLoading dataset from: {self.data_dir}")
         
         # Search for images in directory structure
         valid_extensions = {'.jpg', '.jpeg', '.png', '.JPEG', '.JPG', '.PNG'}
         
-        for class_dir in self.data_dir.iterdir():
+        # Track synset translations for display
+        synset_translations = []
+        
+        for class_dir in sorted(self.data_dir.iterdir()):
             if class_dir.is_dir():
-                class_name = class_dir.name.replace('_', ' ')
+                synset_id = class_dir.name
+                
+                # Convert synset ID to human-readable label
+                if synset_id in self.synset_to_label:
+                    class_name = self.synset_to_label[synset_id]
+                else:
+                    # Fallback: use folder name with underscores replaced
+                    class_name = synset_id.replace('_', ' ')
+                    print(f"  Warning: No mapping found for {synset_id}, using raw name")
+                
+                # Store translation example
+                if len(synset_translations) < 10:
+                    synset_translations.append((synset_id, class_name))
+                
                 image_files = [f for f in class_dir.iterdir() 
                              if f.suffix in valid_extensions]
                 
@@ -57,7 +83,16 @@ class ImageNetSketchDataset(Dataset):
             self.image_paths = self.image_paths[:max_samples]
             self.class_names = self.class_names[:max_samples]
         
-        print(f"Found {len(self.image_paths)} images across {len(set(self.class_names))} classes")
+        print(f"\nFound {len(self.image_paths)} images across {len(set(self.class_names))} classes")
+        
+        # Display sample translations
+        print("\n" + "="*70)
+        print("SYNSET ID → HUMAN-READABLE LABEL TRANSLATIONS")
+        print("="*70)
+        for synset_id, label in synset_translations:
+            prompt = f"sketch of {label}"
+            print(f"  {synset_id:12s} → {label:25s} → '{prompt}'")
+        print("="*70 + "\n")
         
         # Transforms
         self.transforms = transforms.Compose([
@@ -66,6 +101,38 @@ class ImageNetSketchDataset(Dataset):
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5])
         ])
+    
+    def _download_synset_mapping(self, output_file):
+        """Download ImageNet synset to label mapping"""
+        import urllib.request
+        import json
+        
+        try:
+            # Try to get from standard ImageNet class index
+            url = "https://storage.googleapis.com/download.tensorflow.org/data/imagenet_class_index.json"
+            print(f"  Downloading from: {url}")
+            
+            with urllib.request.urlopen(url) as response:
+                data = json.loads(response.read().decode('utf-8'))
+            
+            # Convert to synset_id -> label mapping
+            synset_to_label = {}
+            for idx, (synset, label) in data.items():
+                # Clean up label: replace underscores with spaces
+                clean_label = label.replace('_', ' ')
+                synset_to_label[synset] = clean_label
+            
+            # Save for future use
+            with open(output_file, 'w') as f:
+                json.dump(synset_to_label, f, indent=2)
+            
+            print(f"✓ Downloaded and saved {len(synset_to_label)} mappings to {output_file}")
+            return synset_to_label
+            
+        except Exception as e:
+            print(f"  Error downloading mapping: {e}")
+            print(f"  You'll need to manually create {output_file}")
+            return {}
     
     def __len__(self):
         return len(self.image_paths)
@@ -83,7 +150,7 @@ class ImageNetSketchDataset(Dataset):
             # Return a black image if loading fails
             image = torch.zeros(3, self.resolution, self.resolution)
         
-        # Create prompt
+        # Create prompt with human-readable class name
         prompt = f"sketch of {class_name}"
         
         return {

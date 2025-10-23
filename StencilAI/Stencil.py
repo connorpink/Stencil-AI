@@ -6,7 +6,14 @@ using pretrained Stable Diffusion models with prompt engineering.
 """
 
 import torch
-from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
+from diffusers import (
+    StableDiffusionPipeline,
+    DPMSolverMultistepScheduler,
+    UNet2DConditionModel,
+    AutoencoderKL,
+    PNDMScheduler
+)
+from transformers import CLIPTextModel, CLIPTokenizer
 from PIL import Image, ImageOps, ImageEnhance, ImageFilter
 from typing import Optional, List, Union
 import os
@@ -44,6 +51,8 @@ class StencilGenerator:
     def __init__(
         self,
         model_id: str = "stabilityai/stable-diffusion-2-1-base",
+        # model_id: str = "runwayml/stable-diffusion-v1-5",
+        checkpoint_path: Optional[str] = None,
         device: Optional[str] = None,
         use_fp16: bool = True
     ):
@@ -51,18 +60,52 @@ class StencilGenerator:
         Initialize the Stencil Generator.
 
         Args:
-            model_id: HuggingFace model ID for Stable Diffusion model
+            model_id: HuggingFace model ID for Stable Diffusion model (used if checkpoint_path is None)
+            checkpoint_path: Path to fine-tuned checkpoint directory (e.g., "./checkpoint-1000")
+                           If provided, loads fine-tuned model instead of pretrained model
             device: Device to run on ('cuda', 'cpu', or None for auto-detect)
             use_fp16: Whether to use half precision (FP16) for faster inference
         """
         self.model_id = model_id
+        self.checkpoint_path = checkpoint_path
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.use_fp16 = use_fp16 and self.device == "cuda"
+        self.is_checkpoint_model = checkpoint_path is not None
 
         # Apply monkey-patch to fix transformers version compatibility
         _patch_clip_init()
 
-        print(f"Loading model {model_id} on {self.device}...")
+        # Load model based on whether checkpoint is provided
+        if self.is_checkpoint_model:
+            self._load_from_checkpoint(checkpoint_path)
+        else:
+            self._load_from_pretrained(model_id)
+
+        print("Model loaded successfully!")
+
+        # Set prompt decoration based on model type
+        if self.is_checkpoint_model:
+            # Fine-tuned models use simple "sketch of" prefix
+            self.stencil_suffix = "Sketch of"
+            self.default_negative_prompt = None
+        else:
+            # Standard SD 2.1 models use detailed stencil suffix
+            self.stencil_suffix = (
+                "black silhouette, high contrast, simple stencil design, "
+                "centered in frame, complete object visible, isolated subject"
+            )
+            self.default_negative_prompt = (
+                "color, colorful, photograph, realistic, detailed, complex, "
+            )
+
+    def _load_from_pretrained(self, model_id: str):
+        """
+        Load a pretrained model from HuggingFace.
+
+        Args:
+            model_id: HuggingFace model ID
+        """
+        print(f"Loading pretrained model {model_id} on {self.device}...")
 
         # Load the pipeline with version-compatible parameters
         dtype = torch.float16 if self.use_fp16 else torch.float32
@@ -86,33 +129,58 @@ class StencilGenerator:
             # Uncomment if you have limited VRAM
             # self.pipe.enable_vae_slicing()
 
-        print("Model loaded successfully!")
+    def _load_from_checkpoint(self, checkpoint_path: str):
+        """
+        Load a fine-tuned model from checkpoint directory.
 
-        # Default stencil prompt suffix - simplified since post-processing does the heavy lifting
-        self.stencil_suffix = (
-            "black silhouette, high contrast, simple stencil design, "
-            "centered in frame, complete object visible, isolated subject"
+        Args:
+            checkpoint_path: Path to checkpoint directory containing UNet
+        """
+        print(f"Loading fine-tuned checkpoint from {checkpoint_path} on {self.device}...")
+
+        # Base model for standard components
+        base_model = "runwayml/stable-diffusion-v1-5"
+
+        print("Loading tokenizer...")
+        tokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
+
+        print("Loading text encoder...")
+        text_encoder = CLIPTextModel.from_pretrained(base_model, subfolder="text_encoder")
+
+        print("Loading VAE...")
+        vae = AutoencoderKL.from_pretrained(base_model, subfolder="vae")
+
+        print("Loading scheduler...")
+        scheduler = PNDMScheduler.from_pretrained(base_model, subfolder="scheduler")
+
+        # Load fine-tuned UNet from checkpoint
+        unet_path = f"{checkpoint_path}/unet"
+        print(f"Loading fine-tuned UNet from {unet_path}...")
+        unet = UNet2DConditionModel.from_pretrained(unet_path)
+
+        # Assemble pipeline
+        print("Assembling pipeline...")
+        self.pipe = StableDiffusionPipeline(
+            vae=vae,
+            text_encoder=text_encoder,
+            tokenizer=tokenizer,
+            unet=unet,
+            scheduler=scheduler,
+            safety_checker=None,
+            feature_extractor=None,
+            requires_safety_checker=False
         )
 
-        # Default negative prompt to avoid unwanted features
-        # self.default_negative_prompt = (
-        #     "color, colorful, photograph, realistic, detailed, complex, "
-        #     "blurry, low quality, watermark, text, cropped, cut off, "
-        #     "partial, multiple subjects, duplicate"
-        # )
-
-        # Simpler stencil prompt suffix (seems to work better) - simplified since post-processing does the heavy lifting
-        # self.stencil_suffix = (
-        #     "black silhouette, high contrast, sketch line drawing, simple, simple stencil design, white background, "
-        #     # "centered in frame, complete object visible, isolated subject"
-        # )
-
-        # Simpler negative prompt (seems to work better) to avoid unwanted features
-        self.default_negative_prompt = (
-            "color, colorful, photograph, realistic, detailed, complex, "
-            # "blurry, low quality, watermark, text, cropped, cut off, "
-            # "partial, multiple subjects, duplicate"
-        )
+        # Move to device with FP16 if enabled
+        if self.device == "cuda":
+            if self.use_fp16:
+                self.pipe.vae = self.pipe.vae.to(self.device, dtype=torch.float16)
+                self.pipe.text_encoder = self.pipe.text_encoder.to(self.device, dtype=torch.float16)
+                self.pipe.unet = self.pipe.unet.to(self.device, dtype=torch.float16)
+            else:
+                self.pipe = self.pipe.to(self.device)
+        else:
+            self.pipe = self.pipe.to(self.device)
 
     def _clean_stencil_image(
         self,
@@ -234,12 +302,18 @@ class StencilGenerator:
         """
 
 
-        # Construct full prompt
+        # Construct full prompt based on model type
         full_prompt = prompt
-        if add_stencil_suffix:
-            full_prompt = f"{prompt}, {self.stencil_suffix}"
+        if self.is_checkpoint_model:
+            # For fine-tuned checkpoints, add "sketch of" prefix
+            if add_stencil_suffix and not prompt.lower().startswith("sketch of"):
+                full_prompt = f"sketch of {prompt}"
+        else:
+            # For standard models, use stencil suffix
+            if add_stencil_suffix:
+                full_prompt = f"{prompt}, {self.stencil_suffix}"
 
-        # Use default negative prompt if none provided
+        # Use default negative prompt if none provided (None for checkpoint models)
         full_negative_prompt = negative_prompt or self.default_negative_prompt
 
         # Set seed if provided

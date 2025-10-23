@@ -1,0 +1,20 @@
+{
+  "model_id": "runwayml/stable-diffusion-v1-5",
+  "resolution": 512,
+  "data_dir": "/scratch/mrpink/Downloads/imagenet-sketch/sketch",
+  "max_samples": null,
+  "output_dir": "/scratch/mrpink/output/sd_sketch_20251022_141508",
+  "batch_size": 1,
+  "gradient_accumulation_steps": 8,
+  "num_epochs": 1,
+  "learning_rate": 1e-06,
+  "weight_decay": 0.01,
+  "max_grad_norm": 1.0,
+  "save_steps": 500,
+  "mixed_precision": true,
+  "gradient_checkpointing": true,
+  "use_xformers": false,
+  "num_workers": 4,
+  "generate_samples": true,
+  "seed": 42
+}

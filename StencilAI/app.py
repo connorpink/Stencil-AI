@@ -20,22 +20,41 @@ class StencilApp:
     def __init__(self):
         """Initialize the Stencil Generator."""
         self.generator = None
+        self.current_model_type = None
         self.original_images = []  # Store original images for toggling
         self.outlined_status = []  # Track which images have outline applied
 
-    def load_model(self):
-        """Lazy load the model when first needed."""
-        if self.generator is None:
-            print("Initializing Stencil Generator...")
+    def load_model(self, model_type: str = "Standard SD 2.1"):
+        """
+        Lazy load the model when first needed or reload if model type changed.
+
+        Args:
+            model_type: Type of model to load ("Standard SD 2.1", "Checkpoint-500", "Checkpoint-1000")
+        """
+        # Reload if model type changed or first load
+        if self.generator is None or self.current_model_type != model_type:
+            print(f"Initializing Stencil Generator with {model_type}...")
+
+            # Determine checkpoint path based on model type
+            checkpoint_path = None
+            if model_type == "Checkpoint-500":
+                checkpoint_path = "./Fine-tuning/checkpoint-500"
+            elif model_type == "Checkpoint-1000":
+                checkpoint_path = "./Fine-tuning/checkpoint-1000"
+
             self.generator = StencilGenerator(
                 model_id="stabilityai/stable-diffusion-2-1-base",
+                checkpoint_path=checkpoint_path,
                 use_fp16=torch.cuda.is_available()
             )
+            self.current_model_type = model_type
+
         return self.generator
 
     def generate_stencil(
         self,
         prompt: str,
+        model_type: str,
         negative_prompt: Optional[str],
         num_images: int,
         num_inference_steps: int,
@@ -56,8 +75,8 @@ class StencilApp:
             return [], "Please enter a prompt!"
 
         try:
-            # Load model if not already loaded
-            generator = self.load_model()
+            # Load model (will reload if model type changed)
+            generator = self.load_model(model_type)
 
             # Generate the image(s)
             images = generator.generate(
@@ -179,6 +198,13 @@ def create_interface():
                     label="Prompt",
                     placeholder="e.g., a cat sitting, a tree with spreading branches...",
                     lines=3
+                )
+
+                model_selector = gr.Radio(
+                    choices=["Standard SD 2.1", "Checkpoint-500", "Checkpoint-1000"],
+                    value="Standard SD 2.1",
+                    label="Model Type",
+                    info="Choose between standard model or fine-tuned checkpoints (trained on sketch-style images)"
                 )
 
                 num_images = gr.Slider(
@@ -309,9 +335,10 @@ def create_interface():
                     """
                     ### Tips for Best Results:
                     - Keep prompts simple and descriptive
+                    - **Standard SD 2.1**: Best for general stencils with detailed prompt engineering
+                    - **Checkpoint models**: Fine-tuned for sketch-style stencils (automatically adds "sketch of" prefix)
                     - Generate multiple images to see variations
-                    - The AI automatically adds stencil styling
-                    - Use negative prompts to avoid unwanted features
+                    - Use negative prompts to avoid unwanted features (works best with Standard SD 2.1)
                     - Try the outline option after generation for different styles
                     - Higher inference steps = better quality (but slower)
                     """
@@ -322,6 +349,7 @@ def create_interface():
             fn=app.generate_stencil,
             inputs=[
                 prompt,
+                model_selector,
                 negative_prompt,
                 num_images,
                 num_inference_steps,
