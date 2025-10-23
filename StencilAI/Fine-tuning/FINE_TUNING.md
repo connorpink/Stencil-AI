@@ -22,7 +22,7 @@ In our case, we're fine-tuning **Stable Diffusion v1.5**, a text-to-image diffus
 
 1. **Base Model**: We start with Stable Diffusion v1.5, which was trained on billions of text-image pairs from the internet
 2. **Selective Training**: We only train the **UNet** component (the core denoising network), while freezing other components:
-   -  **UNet**: Trained and updated (learns sketch-specific patterns)
+   - L **UNet**: Trained and updated (learns sketch-specific patterns)
    - L **VAE**: Frozen (keeps its ability to encode/decode images)
    - L **Text Encoder**: Frozen (keeps its language understanding)
 3. **Specialized Learning**: The model learns to generate images in the style of our training data (sketches) when prompted with text
