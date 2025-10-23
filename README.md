@@ -11,31 +11,6 @@ Generate stencils from text descriptions using Stable Diffusion. Now supports **
 ![Showing comparison of models](./StencilAI/Source%20Image%20Sample/Tree_SD_vs_fineTuned.png)
 
 
-```python
-from Stencil import StencilGenerator
-
-# Option 1: Standard SD 2.1 (detailed prompt engineering)
-generator = StencilGenerator()
-stencil = generator.generate("a cat sitting")
-
-# Option 2: Fine-tuned checkpoint (simple prompts, sketch-style)
-generator = StencilGenerator(checkpoint_path="./Fine-tuning/checkpoint-1000")
-stencil = generator.generate("a cat")  # Automatically becomes "sketch of a cat"
-generator.save_image(stencil, "cat_sketch.png")
-```
-
-#### **Two Model Options:**
-
-**Standard SD 2.1** (Default):
-Standard StableDiffusion v1.5 text decoration
--  Results can be inconsistent
-![MountainRangeSD2.1](./StencilAI/Source%20Image%20Sample/Mountains_TextDecorated.png)
-**Fine-Tuned Model** :
--  Trained on 50,000+ sketch images (ImageNet-Sketch dataset)
--  Simple prompts work well (e.g., "a cat" → "sketch of a cat")
--  Consistent accurate sketch-style outputs
-![MountainRangeFineTuned](./StencilAI/Source%20Image%20Sample/Mountains_fineTuned.png)
-
 
 ---
 ### Stencil AI-Gen with CV outline
@@ -87,7 +62,32 @@ The project now includes fine-tuned models trained specifically on sketch-style 
 
 ### Visual Comparison
 
-When generating with the same simple prompt `"a cat"`:
+
+```python
+from Stencil import StencilGenerator
+
+# Option 1: Standard SD 2.1 (detailed prompt engineering)
+generator = StencilGenerator()
+stencil = generator.generate("a cat sitting")
+
+# Option 2: Fine-tuned checkpoint (simple prompts, sketch-style)
+generator = StencilGenerator(checkpoint_path="./Fine-tuning/checkpoint-1000")
+stencil = generator.generate("a cat")  # Automatically becomes "sketch of a cat"
+generator.save_image(stencil, "cat_sketch.png")
+```
+
+#### **Two Model Options:**
+
+**Standard SD 2.1** (Default):
+Standard StableDiffusion v1.5 text decoration
+-  Results can be inconsistent
+![MountainRangeSD2.1](./StencilAI/Source%20Image%20Sample/Mountains_TextDecorated.png)
+**Fine-Tuned Model** :
+-  Trained on 50,000+ sketch images (ImageNet-Sketch dataset)
+-  Simple prompts work well (e.g., "a cat" → "sketch of a cat")
+-  Consistent accurate sketch-style outputs
+![MountainRangeFineTuned](./StencilAI/Source%20Image%20Sample/Mountains_fineTuned.png)
+
 
 
 **See [Fine-tuning/FINE_TUNING.md](./StencilAI/Fine-tuning/FINE_TUNING.md) for complete documentation on the fine-tuning process, training details, and model selection.**
