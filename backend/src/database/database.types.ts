@@ -1,7 +1,7 @@
 export type User = {
    id: number;
    username: string;
-   password_hash: string;
-   password_salt: string;
+   email: string;
+   password: string;
    created_at?: Date;
 }

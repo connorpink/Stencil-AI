@@ -1,9 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'
 import lodash from 'lodash';
+import bcrypt from 'bcrypt';
 import { DatabaseService } from '../database/database.service'
-import { AuthPayloadDto } from './dto/auth.dto';
+import { LoginDto } from './dto/login.dto';
 import { User } from '../database/database.types'
+import { RegisterDto } from './dto/register.dto';
+import { UserDto } from '../dto/User.dto';
 
 @Injectable()
 export class AuthService {
@@ -15,23 +18,85 @@ export class AuthService {
       this.database = database;
    }
 
-   async validateUser({username, password}: AuthPayloadDto) {
-      let fetchedUser: User | null = null;
+   async registerUser({username, email, password}: RegisterDto) {
+      
+      //check if username or email already exists inside the database
+      try {
+         const fetchedUsername = await this.database.query<User>("SELECT * FROM users WHERE username = $1", [username])
+         if (fetchedUsername.rows.length >= 1) { throw new HttpException('Username already taken', 401) }
 
+         const fetchedEmail = await this.database.query<User>("SELECT * FROM users WHERE email = $1", [email])
+         if (fetchedEmail.rows.length >= 1) { throw new HttpException('Email already in use', 401) }
+      }
+      catch (error) {
+         if (error instanceof HttpException) { throw error }
+         console.error("\x1b[31m[AuthService] Server failed to check availability of the username and email\x1b[0m\n", error);
+         throw new HttpException('Internal server error', 500);
+      }
+
+      // hash the users password
+      let hashedPassword: string;
+      try {
+         const saltRounds = 10
+         hashedPassword = await bcrypt.hash(password, saltRounds)
+      }
+      catch (error) {
+         console.error("\x1b[31m[AuthService] Server failed hash the users password\x1b[0m\n", error);
+         throw new HttpException('Internal server error', 500);
+      }
+
+      // add user to the database
+      let createdUser: User;
+      try {
+         const createdUserData = await this.database.query<User>(
+            "INSERT INTO Users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username", 
+            [username, email, hashedPassword]
+         );
+         createdUser = createdUserData.rows[0];
+      }
+      catch (error) {
+         console.error("\x1b[31m[AuthService] Server failed to add user to the database\x1b[0m\n", error);
+         throw new HttpException('Internal server error', 500);
+      }
+      
+      return createdUser;
+   }
+
+   async validateUser({username, password}: LoginDto) {
+
+      // grab user from the database
+      let fetchedUser: User | null = null;
       try {
          const fetchedData = await this.database.query<User>("SELECT * FROM users WHERE username = $1", [username])
          fetchedUser = fetchedData.rows[0] ?? null;
       }
       catch (error) {
          console.error("\x1b[31m[AuthService] Server failed to fetch username from the database\x1b[0m\n", error);
+         throw new HttpException('Internal server error', 500);
       }
 
-      if (!fetchedUser) { throw new UnauthorizedException('Invalid credentials'); }
+      if (!fetchedUser) { throw new HttpException('Invalid credentials', 401); }
 
-      if (password === fetchedUser?.password_hash) {
+
+      // check if the client provided the correct password
+      let correctPassword: boolean = false;
+      try {
+         correctPassword = await bcrypt.compare(password, fetchedUser.password);
+      }
+      catch (error) {
+         console.error("\x1b[31m[AuthService] Server failed to verify if the clients password was correct\x1b[0m\n", error);
+         throw new HttpException("Internal server error", 500);
+      }
+      
+
+      if (correctPassword) {
          const user = lodash.pick(fetchedUser, ['id', 'username']);
-         const tokens = this.jwtService.sign(user);
-         return tokens;
+         return user;
       }
+   }
+
+   async createTokens({id, username}: UserDto) {
+      const tokens = this.jwtService.sign({id, username});
+      return tokens;
    }
 }
