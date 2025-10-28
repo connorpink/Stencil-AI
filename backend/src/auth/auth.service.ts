@@ -2,11 +2,13 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'
 import lodash from 'lodash';
 import bcrypt from 'bcrypt';
+
 import { DatabaseService } from '../database/database.service'
-import { LoginDto } from './dto/login.dto';
-import { User } from '../database/database.types'
-import { RegisterDto } from './dto/register.dto';
-import { UserDto } from '../dto/User.dto';
+
+import { UserDto } from '../server.types';
+import { DatabaseUserDto } from '../database/database.types'
+import { RequestLoginDto } from './dto/login.dto';
+import { RequestRegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -18,14 +20,14 @@ export class AuthService {
       this.database = database;
    }
 
-   async registerUser({username, email, password}: RegisterDto) {
+   async registerUser({username, email, password}: RequestRegisterDto) {
       
       //check if username or email already exists inside the database
       try {
-         const fetchedUsername = await this.database.query<User>("SELECT * FROM users WHERE username = $1", [username])
+         const fetchedUsername = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE username = $1", [username])
          if (fetchedUsername.rows.length >= 1) { throw new HttpException('Username already taken', 401) }
 
-         const fetchedEmail = await this.database.query<User>("SELECT * FROM users WHERE email = $1", [email])
+         const fetchedEmail = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE email = $1", [email])
          if (fetchedEmail.rows.length >= 1) { throw new HttpException('Email already in use', 401) }
       }
       catch (error) {
@@ -46,9 +48,9 @@ export class AuthService {
       }
 
       // add user to the database
-      let createdUser: User;
+      let createdUser: DatabaseUserDto;
       try {
-         const createdUserData = await this.database.query<User>(
+         const createdUserData = await this.database.query<DatabaseUserDto>(
             "INSERT INTO Users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username", 
             [username, email, hashedPassword]
          );
@@ -62,12 +64,12 @@ export class AuthService {
       return createdUser;
    }
 
-   async validateUser({username, password}: LoginDto) {
+   async validateUser({username, password}: RequestLoginDto) {
 
       // grab user from the database
-      let fetchedUser: User | null = null;
+      let fetchedUser: DatabaseUserDto | null = null;
       try {
-         const fetchedData = await this.database.query<User>("SELECT * FROM users WHERE username = $1", [username])
+         const fetchedData = await this.database.query<DatabaseUserDto>("SELECT * FROM users_private WHERE username = $1", [username])
          fetchedUser = fetchedData.rows[0] ?? null;
       }
       catch (error) {
@@ -76,7 +78,6 @@ export class AuthService {
       }
 
       if (!fetchedUser) { throw new HttpException('Invalid credentials', 401); }
-
 
       // check if the client provided the correct password
       let correctPassword: boolean = false;
@@ -88,7 +89,6 @@ export class AuthService {
          throw new HttpException("Internal server error", 500);
       }
       
-
       if (correctPassword) {
          const user = lodash.pick(fetchedUser, ['id', 'username']);
          return user;
