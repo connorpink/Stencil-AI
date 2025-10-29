@@ -1,6 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
+
+import { AppModule } from './app.module';
+import { SetCookieFlags } from './middleware/cookieFlags.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,6 +14,11 @@ async function bootstrap() {
     whitelist: true,
     forbidNonWhitelisted: true,
   }));
+
+  // manages the default settings for cookies sent out
+  app.use(new SetCookieFlags().use.bind(new SetCookieFlags()));
+
+  app.use(cookieParser());
 
   await app.listen(process.env.PORT ?? 3000);
 }

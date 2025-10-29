@@ -96,7 +96,14 @@ export class AuthService {
    }
 
    async createTokens({id, username}: UserDto) {
-      const tokens = this.jwtService.sign({id, username});
-      return tokens;
+      const accessToken = this.jwtService.sign({id, username});
+      const refreshToken = this.jwtService.sign({id, username}, {expiresIn: '30d'});
+      
+      return {accessToken, refreshToken}
+   }
+
+   async refresh(refreshToken: string) {
+      const decodedToken = this.jwtService.decode(refreshToken);
+      console.log(decodedToken);
    }
 }
