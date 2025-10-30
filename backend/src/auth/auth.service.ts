@@ -1,12 +1,12 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Req } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'
 import lodash from 'lodash';
 import bcrypt from 'bcrypt';
 
 import { DatabaseService } from '../database/database.service'
 
-import { UserDto } from '../server.types';
-import { DatabaseUserDto } from '../database/database.types'
+import { UserDto } from 'src/server.types';
+import { DatabaseRefreshTokenDto, DatabaseUserDto } from '../database/database.types'
 import { RequestLoginDto } from './dto/login.dto';
 import { RequestRegisterDto } from './dto/register.dto';
 
@@ -96,14 +96,41 @@ export class AuthService {
    }
 
    async createTokens({id, username}: UserDto) {
-      const accessToken = this.jwtService.sign({id, username});
-      const refreshToken = this.jwtService.sign({id, username}, {expiresIn: '30d'});
+
+      // create the tokens
+      const accessToken = this.jwtService.sign({type: 'access', id, username});
+      const refreshToken = this.jwtService.sign({type: 'refresh', id, username}, {expiresIn: '30d'});
+
+      // save the tokens inside the database
+      try {
+         await this.database.query("INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)", [id, refreshToken])
+      }
+      catch (error) {
+         console.error("\x1b[31m[AuthService] Server failed to save refresh token inside the database\x1b[0m\n", error);
+         throw new HttpException("Internal server error", 500);
+      }
       
       return {accessToken, refreshToken}
    }
 
    async refresh(refreshToken: string) {
       const decodedToken = this.jwtService.decode(refreshToken);
-      console.log(decodedToken);
+      if (decodedToken.type != 'refresh') { throw new HttpException("No valid refresh token provided", 401); }
+
+      // check the database to see if the refresh token is valid
+      try {
+         const fetchedData = await this.database.query<DatabaseRefreshTokenDto>("SELECT * FROM refresh_tokens WHERE user_id = $1", [decodedToken.id]);
+         const fetchedRefreshToken = fetchedData.rows[0] ?? null;
+         if (!fetchedRefreshToken || fetchedRefreshToken.token !== refreshToken) { throw new HttpException("Invalid refresh token", 401); }
+      }
+      catch (error) {
+         if (error instanceof HttpException) { throw error }
+         console.error("\x1b[31m[AuthService] Server failed check the database for the refreshToken\x1b[0m\n", error);
+         throw new HttpException("Internal server error", 500);
+      }
+
+      const newToken = this.jwtService.sign({type: 'access', id: decodedToken.id, username: decodedToken.username});
+      
+      return newToken;
    }
 }

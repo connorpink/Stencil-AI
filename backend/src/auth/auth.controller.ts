@@ -16,20 +16,20 @@ export class AuthController {
    }
 
    @Post('register')
-   async register(@Body() payload: RequestRegisterDto) {
-      const createdUser = await this.authService.registerUser(payload)
-      if (!createdUser) { throw new HttpException('AuthService failed to create new user', 500) }
-      const createdTokens = await this.authService.createTokens(createdUser)
-      if (!createdTokens) { throw new HttpException('AuthService failed to created refresh tokens', 500) }
-      return createdTokens
+   async register(@Body() payload: RequestRegisterDto, @Req() req: Request) {
+      const createdUser = await this.authService.registerUser(payload);
+      if (!createdUser) { throw new HttpException('AuthService failed to create new user', 500); }
+      const createdTokens = await this.authService.createTokens(createdUser);
+      if (!createdTokens) { throw new HttpException('AuthService failed to created refresh tokens', 500); }
+      return createdTokens;
    }
 
    @Post('login')
    @UseGuards(LocalGuard)
    async login(@Body() payload: RequestLoginDto, @Res({passthrough: true}) res: Response) {
-      const validUser = await this.authService.validateUser(payload)
-      if (!validUser) { throw new HttpException('AuthService failed to validate user', 500)}
-      const { accessToken, refreshToken } = await this.authService.createTokens(validUser)
+      const validUser = await this.authService.validateUser(payload);
+      if (!validUser) { throw new HttpException('AuthService failed to validate user', 500); }
+      const { accessToken, refreshToken } = await this.authService.createTokens(validUser);
       if (!accessToken || !refreshToken) { throw new HttpException('AuthService failed to create tokens', 500); }
 
       // send tokens back to client in the form of cookies
@@ -47,10 +47,15 @@ export class AuthController {
 
    @Get('refresh')
    async refresh(@Req() request: Request, @Res({passthrough: true}) res: Response) {
+
+      // make sure refresh token was provided
       const refreshToken = request.cookies['refresh_token'];
-      if (!refreshToken) { throw new HttpException('No refresh token provided', 401) }
+      if (!refreshToken) { throw new HttpException('No valid refresh token provided', 401) }
+
+      // use the refresh token to obtain a new access token
       const updatedToken = await this.authService.refresh(refreshToken);
       res.cookie('access_token', updatedToken);
-      return { message: 'Token refresh successful', updatedToken}
+
+      return { message: 'Token refresh successful' }
    }
 }

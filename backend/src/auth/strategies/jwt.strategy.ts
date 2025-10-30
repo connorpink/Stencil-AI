@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { HttpException, Injectable } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 
@@ -15,6 +15,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    }
 
    validate(payload: any) {
-      return payload;
+      if (payload.type !== 'access') { throw new HttpException("Internal server error", 500) }
+      return {
+         id: payload.id,
+         username: payload.username
+      }
    }
 }
