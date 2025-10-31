@@ -7,11 +7,13 @@ environment:
   sdk: ^3.9.2
 
 dependencies:
+  dio: ^5.9.0
   flutter:
     sdk: flutter
 
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  flutter_bloc: ^9.1.1
 
 dev_dependencies:
   flutter_test:

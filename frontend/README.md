@@ -1,3 +1,3 @@
-# flutter_frontend
+# frontend
 
 A new Flutter project.
