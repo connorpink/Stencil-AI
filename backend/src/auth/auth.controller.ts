@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import { JwtAuthGuard } from './guards/jwt.guard';
 import { LocalGuard } from './guards/local.guard';
 
+import { UserDto } from 'src/server.types';
 import { RequestRegisterDto } from './dto/register.dto';
 import { RequestLoginDto } from './dto/login.dto';
 
@@ -13,6 +14,12 @@ export class AuthController {
 
    constructor(authService: AuthService) {
       this.authService = authService;
+   }
+
+   @Get('status')
+   @UseGuards(JwtAuthGuard)
+   async status(@Req() req: Request) {
+      return req.user;
    }
 
    @Post('register')
@@ -39,17 +46,22 @@ export class AuthController {
       return { message: 'Login successful', validUser };
    }
 
-   @Get('status')
+   @Post('deleteAccount')
    @UseGuards(JwtAuthGuard)
-   async status(@Req() req: Request) {
-      return req.user;
+   async deleteAccount(@Req() req: Request) {
+
+      const currentUser: UserDto | undefined = req.user;
+      if (!currentUser) { throw new HttpException('user must be signed in to delete account', 401) }
+      await this.authService.deleteAccount(currentUser);
+
+      return { message: 'Account deleted' }
    }
 
-   @Get('refresh')
-   async refresh(@Req() request: Request, @Res({passthrough: true}) res: Response) {
+   @Post('refresh')
+   async refresh(@Req() req: Request, @Res({passthrough: true}) res: Response) {
 
       // make sure refresh token was provided
-      const refreshToken = request.cookies['refresh_token'];
+      const refreshToken = req.cookies['refresh_token'];
       if (!refreshToken) { throw new HttpException('No valid refresh token provided', 401) }
 
       // use the refresh token to obtain a new access token
@@ -57,5 +69,12 @@ export class AuthController {
       res.cookie('access_token', updatedToken);
 
       return { message: 'Token refresh successful' }
+   }
+
+   @Post('logout')
+   async logout(@Res() res: Response) {
+      res.clearCookie('access_token');
+      res.clearCookie('refresh_token');
+      return { message: 'Logout successful' }; 
    }
 }

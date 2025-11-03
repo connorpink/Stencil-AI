@@ -133,4 +133,16 @@ export class AuthService {
       
       return newToken;
    }
+
+   async deleteAccount(user: UserDto) {
+      // remove account and all refresh tokens associated with the account
+      try {
+         await this.database.query("DELETE FROM users WHERE id = $1",[user.id]);
+         await this.database.query("DELETE FROM refresh_tokens WHERE user_id = $1", [user.id]);
+      }
+      catch (error) {
+         console.error("\x1b[31m[AuthService] Server failed check the database for the refreshToken\x1b[0m\n", error);
+         throw new HttpException("Internal server error", 500);
+      }
+   }
 }
