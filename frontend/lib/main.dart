@@ -6,7 +6,7 @@ import 'package:flutter_frontend/features/auth/presentation/screens/auth_screen.
 import 'package:flutter_frontend/features/drawing/data/models/offset.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/home_screen.dart';
-import 'package:flutter_frontend/features/drawing/presentation/screens/splash_screen.dart';
+import 'package:flutter_frontend/shared/screens/splash_screen.dart';
 import 'package:flutter_frontend/themes/light_mode.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'features/drawing/data/models/stroke.dart';
@@ -47,7 +47,7 @@ class MainApp extends StatelessWidget {
           '/': (context) => const SplashScreen(),
           '/home': (context) => const HomeScreen(),
           '/draw': (context) => const DrawScreen(),
-          '/authenticate': (context) => const AuthScreen(),
+          '/auth': (context) => const AuthScreen(),
         },
         theme: lightMode,
       ),

@@ -24,12 +24,12 @@ class CustomTextField extends StatelessWidget {
         ),
 
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurfaceVariant),
           borderRadius: BorderRadius.circular(12),
         ),
 
         hintText: hintText,
-        hintStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
+        hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         fillColor: Theme.of(context).colorScheme.secondary,
         filled: true,
       ),

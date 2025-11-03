@@ -28,6 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.pushNamed(context, '/draw', arguments: name);
   }
 
+  void _openAuth() async {
+    Navigator.pushNamed(context, '/auth');
+  }
+
   void _deleteDrawing(String name) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -56,13 +60,18 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('My Art Gallery'),
         actions: [
-          IconButton(
-            onPressed: () async {
-              await _drawingBox.deleteFromDisk();
-              _drawingBox = await Hive.openBox<Map<dynamic, dynamic>>('drawings');
-              setState(() {});
-            },
-            icon: Icon(Icons.delete_forever_outlined)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextButton(
+              onPressed: () { _openAuth(); },
+              style: TextButton.styleFrom(
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 1.5, // Border width
+                ),
+              ),
+              child: Text("Sign in"),
+            ),
           )
         ],
       ),
@@ -87,14 +96,14 @@ class _HomeScreenState extends State<HomeScreen> {
 // Widget for displaying a collection of drawings in a dynamic grid layout
 class DrawingCollection extends StatelessWidget {
   final Box<Map<dynamic, dynamic>> collection;
-  final void Function(String name)? openDrawing;
-  final void Function(String name)? deleteDrawing;
+  final void Function(String name) openDrawing;
+  final void Function(String name) deleteDrawing;
 
   const DrawingCollection({
     super.key,
     required this.collection,
-    this.openDrawing,
-    this.deleteDrawing,
+    required this.openDrawing,
+    required this.deleteDrawing,
   });
 
   @override
@@ -123,13 +132,7 @@ class DrawingCollection extends StatelessWidget {
               return Stack(
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/draw',
-                        arguments: name
-                      );
-                    },
+                    onTap: () { openDrawing(name); },
                     child: Card (
                       elevation: 4,
                       child: Column (
@@ -160,8 +163,8 @@ class DrawingCollection extends StatelessWidget {
                     top: 4,
                     right: 4,
                     child: IconButton(
-                      onPressed: () => deleteDrawing?.call(name),
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () { deleteDrawing.call(name); },
+                      icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.primary),
                     )
                   ),
                 ]

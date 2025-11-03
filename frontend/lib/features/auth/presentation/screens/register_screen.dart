@@ -7,8 +7,8 @@ once signed in the user will be directed to the home page
 */
 
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/features/auth/presentation/components/custom_button.dart';
-import 'package:flutter_frontend/features/auth/presentation/components/custom_textfield.dart';
+import 'package:flutter_frontend/features/auth/presentation/widgets/auth_button_widget.dart';
+import 'package:flutter_frontend/features/auth/presentation/widgets/auth_textfield_widget.dart';
 
 class RegisterScreen extends StatefulWidget{
   final void Function()? togglePages;
@@ -40,12 +40,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-          
+
               // logo
               Icon(
                 Icons.lock_open,
                 size: 80,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(height: 25),
           
@@ -54,7 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 "Stencil-AI",
                 style: TextStyle(
                   fontSize: 16,
-                  color: Theme.of(context).colorScheme.inversePrimary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 25),
@@ -65,14 +65,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 hintText: "Username",
                 obscureText: false,
               ),
+              const SizedBox(height: 10),
 
               // email textfield
               CustomTextField(
-                controller: usernameController,
+                controller: emailController,
                 hintText: "Email",
                 obscureText: false,
               ),
-
               const SizedBox(height: 10),
 
               // password textfield
@@ -81,7 +81,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 hintText: "Password",
                 obscureText: true
               ),
-
               const SizedBox(height: 10),
 
               CustomTextField(
@@ -99,7 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Text(
                     "Forgot Password?",
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.bold,
                     )
                   ),
@@ -122,7 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Text(
                     "Already have an account?",
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary
+                      color: Theme.of(context).colorScheme.onSurfaceVariant
                     ),
                   ),
                   GestureDetector(

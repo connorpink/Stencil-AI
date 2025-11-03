@@ -7,8 +7,8 @@ once signed in the user will be directed to the home page
 */
 
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/features/auth/presentation/components/custom_button.dart';
-import 'package:flutter_frontend/features/auth/presentation/components/custom_textfield.dart';
+import 'package:flutter_frontend/features/auth/presentation/widgets/auth_button_widget.dart';
+import 'package:flutter_frontend/features/auth/presentation/widgets/auth_textfield_widget.dart';
 
 class LoginScreen extends StatefulWidget{
   final void Function()? togglePages;
@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Icon(
                 Icons.lock_open,
                 size: 80,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(height: 25),
           
@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 "Stencil-AI",
                 style: TextStyle(
                   fontSize: 16,
-                  color: Theme.of(context).colorScheme.inversePrimary,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 25),
@@ -82,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     "Forgot Password?",
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.bold,
                     )
                   ),
@@ -105,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     "Don't have an account?",
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary
+                      color: Theme.of(context).colorScheme.onSurfaceVariant
                     ),
                   ),
                   GestureDetector(
