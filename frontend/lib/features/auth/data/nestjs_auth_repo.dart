@@ -1,9 +1,9 @@
 
 import 'package:flutter_frontend/features/auth/domain/entities/app_user.dart';
-import 'package:flutter_frontend/features/auth/domain/repos/auth_repo.dart';
+import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository.dart';
 import '../../../services/dio_client.dart' as dio;
 
-class NestJsAuthRepo implements AuthRepo {
+class NestJsAuthRepo implements AuthRepository {
 
   @override
   Future<AppUser?> loginWithUsernamePassword(String username, String password) async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_frontend/features/auth/data/nestjs_auth_repo.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
+import 'package:flutter_frontend/features/auth/presentation/screens/auth_screen.dart';
 import 'package:flutter_frontend/features/drawing/data/models/offset.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/home_screen.dart';
@@ -46,6 +47,7 @@ class MainApp extends StatelessWidget {
           '/': (context) => const SplashScreen(),
           '/home': (context) => const HomeScreen(),
           '/draw': (context) => const DrawScreen(),
+          '/authenticate': (context) => const AuthScreen(),
         },
         theme: lightMode,
       ),

@@ -10,19 +10,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/features/auth/presentation/components/custom_button.dart';
 import 'package:flutter_frontend/features/auth/presentation/components/custom_textfield.dart';
 
-class RegisterPage extends StatefulWidget{
+class RegisterScreen extends StatefulWidget{
   final void Function()? togglePages;
 
-  const RegisterPage({
+  const RegisterScreen({
     super.key, 
     required this.togglePages
   });
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterScreenState extends State<RegisterScreen> {
 
   //text controllers
   final usernameController = TextEditingController();

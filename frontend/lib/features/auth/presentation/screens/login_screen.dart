@@ -10,19 +10,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/features/auth/presentation/components/custom_button.dart';
 import 'package:flutter_frontend/features/auth/presentation/components/custom_textfield.dart';
 
-class LoginPage extends StatefulWidget{
+class LoginScreen extends StatefulWidget{
   final void Function()? togglePages;
 
-  const LoginPage({
+  const LoginScreen({
     super.key, 
     required this.togglePages
   });
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginScreenState extends State<LoginScreen> {
 
   //text controllers
   final usernameController = TextEditingController();
