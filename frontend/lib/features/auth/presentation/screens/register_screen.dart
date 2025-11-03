@@ -89,23 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 obscureText: true
               ),
 
-              const SizedBox(height: 10),
-
-              // forgot password
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    "Forgot Password?",
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.bold,
-                    )
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 10),
+              const SizedBox(height: 25),
 
               //login button
               CustomButton(
