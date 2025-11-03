@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_frontend/features/auth/data/nestjs_auth_repo.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
-import 'package:flutter_frontend/src/models/offset.dart';
-import 'package:flutter_frontend/src/screens/draw_screen.dart';
-import 'package:flutter_frontend/src/screens/home_screen.dart';
-import 'package:flutter_frontend/src/screens/splash_screen.dart';
+import 'package:flutter_frontend/features/drawing/data/models/offset.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/home_screen.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/splash_screen.dart';
 import 'package:flutter_frontend/themes/light_mode.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import './src/models/stroke.dart';
+import 'features/drawing/data/models/stroke.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

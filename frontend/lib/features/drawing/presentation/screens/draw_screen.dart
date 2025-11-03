@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/src/widgets/drawing_preview.dart';
+import 'package:flutter_frontend/features/drawing/presentation/widgets/drawing_preview.dart';
 import 'package:hive/hive.dart';
-import '../models/stroke.dart';
+import '../../data/models/stroke.dart';
 
 class DrawScreen extends StatefulWidget {
   const DrawScreen({super.key});

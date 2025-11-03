@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:hive/hive.dart';
-import './offset.dart';
+import 'offset.dart';
 
 part 'stroke.g.dart';
 

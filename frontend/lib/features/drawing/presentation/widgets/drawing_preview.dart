@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'dart:ui';
-import '../models/stroke.dart';
+import '../../data/models/stroke.dart';
 import 'package:flutter/material.dart';
 
 Future<Uint8List> generateThumbnail(List<Stroke> strokes, double width, double height) async {
