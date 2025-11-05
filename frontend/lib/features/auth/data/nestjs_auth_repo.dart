@@ -1,15 +1,17 @@
 
 import 'package:flutter_frontend/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository.dart';
-import '../../../services/dio_client.dart' as dio;
+import '../../../services/dio_client.dart';
 
 class NestJsAuthRepo implements AuthRepository {
 
   @override
   Future<AppUser?> loginWithUsernamePassword(String username, String password) async {
     try {
-      AppUser appUser = await dio.sendRequest<AppUser>('POST', '/auth/login', {username, password});
-      return appUser;
+      final response = await dio.sendRequest<AppUser>('POST', '/auth/login', data: {username, password});
+      AppUser? appUser = response.data;
+      if (appUser != null) { return appUser; }
+      else { throw Exception(response.message); }
     }
     catch (error) {
       throw Exception('Login failed: $error');
@@ -19,8 +21,10 @@ class NestJsAuthRepo implements AuthRepository {
   @override
   Future<AppUser?> registerWithUsernamePassword(String username, String email, String password) async {
     try {
-      AppUser appUser = await dio.sendRequest<AppUser>('POST','/auth/register');
-      return appUser;
+      final response = await dio.sendRequest<AppUser>('POST','/auth/register', data: {username, email, password});
+      AppUser? appUser = response.data;
+      if (appUser != null) { return appUser; }
+      else { throw Exception(response.message); }
     }
     catch (error) {
       throw Exception('Register failed $error');
@@ -40,9 +44,10 @@ class NestJsAuthRepo implements AuthRepository {
   @override
   Future<AppUser?> getCurrentUser() async {
     try {
-      final currentUser = await dio.sendRequest('GET', '/auth/status');
-      if (currentUser == null) { return null; }
-      return AppUser(id: currentUser.id, username: currentUser.username);
+      final response = await dio.sendRequest<AppUser>('GET', '/auth/status');
+      if (response.code == 200) { return response.data; }
+      if (response.code == 401) { return null; }
+      else { throw Exception("Failed to get status from server"); }
     }
     catch (error) {
       throw Exception('Status check failed $error');

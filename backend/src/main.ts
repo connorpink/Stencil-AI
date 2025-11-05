@@ -4,9 +4,20 @@ import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
 import { SetCookieFlags } from './middleware/cookieFlags.middleware';
+import { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // general logger for incoming requests
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    console.log("\n\n\n")
+    console.log("REQUEST RECEIVED!");
+    console.log("->", req.method, req.path);
+    next();
+  })
+
+  app.enableCors();
 
   // make sure all parameters passed from client match the expected dto
   // throw an error if any unexpected values are passed to the server (change before production)
