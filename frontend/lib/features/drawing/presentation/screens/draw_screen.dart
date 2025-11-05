@@ -6,7 +6,12 @@ import 'package:hive/hive.dart';
 import '../../data/models/stroke.dart';
 
 class DrawScreen extends StatefulWidget {
-  const DrawScreen({super.key});
+  final String? name;
+
+  const DrawScreen({
+    super.key,
+    this.name,
+  });
 
   @override
   State<DrawScreen> createState() => _DrawScreenState();
@@ -31,7 +36,7 @@ class _DrawScreenState extends State<DrawScreen> {
 
   Future<void> _initializeHive() async {
     _drawingBox = Hive.box<Map<dynamic, dynamic>>('drawings');
-    final name = ModalRoute.of(context)?.settings.arguments as String?;
+    final name = widget.name;
     if(name != null) {
       final rawData = _drawingBox.get(name);
       setState(() {

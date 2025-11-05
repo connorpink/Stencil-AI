@@ -19,15 +19,21 @@ class AuthCubit extends Cubit<AuthState> {
     // set to loading
     emit(AuthLoading());
 
-    // get current user
-    final AppUser? user = await authRepo.getCurrentUser();
+    try {
+      // get current user
+      final AppUser? user = await authRepo.getCurrentUser();
 
-    if (user != null) {
-      _currentUser = user;
-      emit(Authenticated(user));
+      if (user != null) {
+        _currentUser = user;
+        emit(Authenticated(user));
+      }
+      else {
+        emit(Unauthenticated());
+      }
     }
-    else {
-      emit(Unauthenticated());
+
+    catch (error) {
+      emit(AuthError(error.toString()));
     }
   }
 
@@ -46,7 +52,6 @@ class AuthCubit extends Cubit<AuthState> {
     }
     catch (error) {
       emit(AuthError(error.toString()));
-      emit(Unauthenticated());
     }
   }
 
@@ -65,7 +70,6 @@ class AuthCubit extends Cubit<AuthState> {
     }
     catch (error) {
       emit(AuthError(error.toString()));
-      emit(Unauthenticated());
     }
   }
 
@@ -93,7 +97,6 @@ class AuthCubit extends Cubit<AuthState> {
     }
     catch (error) {
       emit(AuthError(error.toString()));
-      emit(Unauthenticated());
     }
   }
 }

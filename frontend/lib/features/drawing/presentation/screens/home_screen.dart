@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -25,11 +26,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openDrawing(String name) async {
-    Navigator.pushNamed(context, '/draw', arguments: name);
+    context.go('/draw', extra: name);
   }
 
   void _openAuth() async {
-    Navigator.pushNamed(context, '/auth');
+    context.go('/auth');
   }
 
   void _deleteDrawing(String name) async {
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.draw),
         onPressed: () {
-          Navigator.pushNamed(context, '/draw');
+          context.go('/draw');
           setState(() {});
         },
       ),

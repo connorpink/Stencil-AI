@@ -33,6 +33,6 @@ Future<T> sendRequest<T>(String method, String url, [dynamic data]) async {
   }
   on DioException catch (error) {
     print('Request failed: ${error.response?.statusCode} ${error.message}');
-    rethrow;
+    throw Exception("Dio caught exception");
   }
 }
