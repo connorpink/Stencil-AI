@@ -27,7 +27,8 @@ class NestJsAuthRepo implements AuthRepository {
       else { throw Exception(response.message); }
     }
     catch (error) {
-      throw Exception('Register failed $error');
+      print('Register failed: $error');
+      throw Exception('Internal server error');
     }
   }
   

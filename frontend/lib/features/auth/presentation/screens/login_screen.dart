@@ -7,6 +7,8 @@ once signed in the user will be directed to the home page
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter_frontend/features/auth/presentation/widgets/auth_button_widget.dart';
 import 'package:flutter_frontend/features/auth/presentation/widgets/auth_textfield_widget.dart';
 
@@ -27,6 +29,21 @@ class _LoginScreenState extends State<LoginScreen> {
   //text controllers
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+
+  String? errorMessage;
+
+  void login() {
+    final username = usernameController.text;
+    final password = passwordController.text;
+
+    final authCubit = context.read<AuthCubit>();
+
+    if (username.isEmpty) { errorMessage = "invalid username"; }
+    if (password.isEmpty) { errorMessage = "invalid password"; }
+
+    try { authCubit.login(username, password); }
+    catch (error) { errorMessage = error as String; }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               //login button
               CustomButton(
-                onTap: (){},
+                onTap: login,
                 text: "Login"
               ),
 

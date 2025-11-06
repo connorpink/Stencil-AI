@@ -7,6 +7,8 @@ once signed in the user will be directed to the home page
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter_frontend/features/auth/presentation/widgets/auth_button_widget.dart';
 import 'package:flutter_frontend/features/auth/presentation/widgets/auth_textfield_widget.dart';
 
@@ -29,6 +31,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+
+  String? errorMessage;
+
+  // logic for registering an account
+  void register() {
+    // prepare info
+    final String username = usernameController.text;
+    final String email = emailController.text;
+    final String password = passwordController.text;
+    final String confirmPassword = confirmPasswordController.text;
+
+    // auth cubit
+    final authCubit = context.read<AuthCubit>();
+
+    // ensure fields are valid
+    if (username.isEmpty) { errorMessage = "invalid username"; return; }
+    if (email.isEmpty) { errorMessage = "invalid email"; return; }
+    if (password.isEmpty) { errorMessage = "invalid password"; return; }
+    if (password != confirmPassword) { errorMessage = "passwords do not match"; return; }
+
+    try { authCubit.register(username, email, password); }
+    catch (error) { errorMessage = error as String; }
+  }
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,9 +125,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 25),
 
-              //login button
+              //register button
               CustomButton(
-                onTap: (){},
+                onTap: register,
                 text: "Create Account"
               ),
 
