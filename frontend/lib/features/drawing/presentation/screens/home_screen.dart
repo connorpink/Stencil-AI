@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -27,10 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openDrawing(String name) async {
     context.go('/draw', extra: name);
-  }
-
-  void _openAuth() async {
-    context.go('/auth');
   }
 
   void _deleteDrawing(String name) async {
@@ -61,18 +59,12 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('My Art Gallery'),
         actions: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextButton(
-              onPressed: () { _openAuth(); },
-              style: TextButton.styleFrom(
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 1.5, // Border width
-                ),
-              ),
-              child: Text("Sign in"),
-            ),
+          IconButton(
+            onPressed: () {
+              final authCubit = context.read<AuthCubit>();
+              authCubit.logout();
+            },
+            icon: const Icon(Icons.logout),
           )
         ],
       ),

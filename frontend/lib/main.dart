@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'features/drawing/data/models/stroke.dart';
+import 'package:go_router/go_router.dart';
+
 import 'package:flutter_frontend/features/auth/data/nestjs_auth_repo.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_states.dart';
@@ -10,11 +14,12 @@ import 'package:flutter_frontend/features/drawing/presentation/screens/draw_scre
 import 'package:flutter_frontend/features/drawing/presentation/screens/home_screen.dart';
 import 'package:flutter_frontend/shared/screens/splash_screen.dart';
 import 'package:flutter_frontend/themes/light_mode.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'features/drawing/data/models/stroke.dart';
-import 'package:go_router/go_router.dart';
 
 void main() async {
+  /*
+  Setup hive (client side database) before proceeding to the main application
+  */
+
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 
@@ -22,70 +27,57 @@ void main() async {
   Hive.registerAdapter(OffsetCustomAdapter());
   Hive.registerAdapter(StrokeAdapter());
 
+  // open hive
   await Hive.openBox<Map<dynamic, dynamic>>('drawings');
+
+  // setup the reset of the application
   runApp(MainApp());
 }
 
-class MainApp extends StatelessWidget {
-  MainApp({super.key});
-
-  final server = NestJsAuthRepo();
+class MainApp extends StatefulWidget {
+  const MainApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<AuthCubit>(
-          create: (context) { return AuthCubit(authRepo: server)..checkAuth(); },
-        )
-      ],
-
-      child: _AppRouter(),
-    );
-  }
+  State<MainApp> createState() => _MainAppState();
 }
 
-class _AppRouter extends StatelessWidget {
+class _MainAppState extends State<MainApp> {
+  late final AuthCubit authCubit;
+  GoRouter? _router;
+  bool _appReady = false;
+
+  final authRepo = NestJsAuthRepo();
 
   @override
-  Widget build(BuildContext context) {
+  void initState() {
+    super.initState();
+    authCubit = AuthCubit(authRepo: authRepo);
+    _appStartup();
+  }
 
-    // watch for changes in the auth state
-    final authCubit = context.watch<AuthCubit>();
+  Future<void> _appStartup() async {
+    await authCubit.checkAuth();
 
-    final router = GoRouter(
-      initialLocation: '/',
+    // pick the starting location
+    final initialLocation = switch (authCubit.state) {
+      Unauthenticated() => '/auth',
+      _ => '/home',
+    };
 
-      // rebuild GoRouter based on changes to the auth state
+    await Future.delayed(const Duration(seconds: 6));
+    
+    // create the router
+    setState(() {
+      _router = _buildRouter(initialLocation);
+      _appReady = true;
+    });
+  }
+
+  GoRouter _buildRouter(String initialLocation) {
+    return GoRouter(
+      initialLocation: initialLocation,
       refreshListenable: GoRouterRefreshStream(authCubit.stream),
-
-      redirect:(context, state) {
-        // isAuthenticated should be relative to the Unauthenticated state, as redirects should only happen if the server is reachable (and can confirm authentication status)
-        final isAuthenticated = authCubit.state is! Unauthenticated;
-        final atAuthScreen = state.matchedLocation == '/auth';
-        final atSplashScreen = state.matchedLocation == '/';
-
-        // if user isn't signed in, make sure they are going to or already at the /auth screen
-        if (!isAuthenticated && !(atAuthScreen || atSplashScreen)) {
-          print("Redirecting to auth screen");
-          return '/auth'; 
-        }
-
-        // is user is logged in make sure they are no longer at the auth screen
-        if (isAuthenticated && atAuthScreen) { 
-          print("Redirecting to home screen");
-          return '/home';
-        }
-
-        // no redirection needed
-        return null;
-      },
-
       routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) { return const SplashScreen(); }
-        ),
         GoRoute(
           path: '/home',
           builder: (context, state) { return const HomeScreen(); }
@@ -102,15 +94,49 @@ class _AppRouter extends StatelessWidget {
           builder: (context, state) { return const AuthScreen(); }
         ),
       ],
-      
-    );
 
-    return MaterialApp.router(
-      title: 'Stencil-AI',
-      theme: lightMode,
-      debugShowCheckedModeBanner: false,
-      routerConfig: router,
+      redirect: (context, state) {
+        // If server is offline let the user use the drawing app anyway by only redirecting if server confirms the user is unauthenticated
+        final isAuthed = authCubit.state is! Unauthenticated;
+
+        // only redirect user if they are in home page (don't interrupt drawing)
+        if (!isAuthed && state.matchedLocation.startsWith('/home')) { return '/auth'; }
+
+        // prevent authed users from hanging out on /auth
+        if (isAuthed && state.matchedLocation == '/auth') { return '/home'; }
+
+        // do nothing otherwise
+        return null;
+      },
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // call the splashScreen without the router
+    if (!_appReady) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: lightMode,
+        home: const SplashScreen(),
+      );
+    }
+
+    // once app is ready call the actual page
+    return MultiBlocProvider(
+      providers: [BlocProvider<AuthCubit>.value(value: authCubit)], 
+      child: MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        theme: lightMode,
+        routerConfig: _router,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    authCubit.close();
+    super.dispose();
   }
 }
 

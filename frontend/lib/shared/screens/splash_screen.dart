@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
-import 'package:flutter_frontend/features/auth/presentation/cubits/auth_states.dart';
-import 'package:go_router/go_router.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,24 +15,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
 
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
-    _controller.forward();
-
-    Future.delayed(const Duration(seconds: 3), _handleRedirect);
-  }
-
-  void _handleRedirect() {
-    if (!mounted) { return; }
-
-    final authCubit = context.read<AuthCubit>();
-
-    if (authCubit.state is Unauthenticated) { context.go('/auth'); }
-    else { context.go('/home'); }
+    _controller = AnimationController( vsync: this, duration: const Duration(seconds: 3), )..forward();
+    _fadeAnimation = Tween<double>(begin: 0, end: 3).animate(_controller);
   }
 
   @override 

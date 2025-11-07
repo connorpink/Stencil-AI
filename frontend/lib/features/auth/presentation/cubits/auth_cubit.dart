@@ -15,7 +15,7 @@ class AuthCubit extends Cubit<AuthState> {
   AppUser? get currentUser => _currentUser;
 
   // check if user is authenticated
-  void checkAuth() async {
+  Future<void> checkAuth() async {
     // set to loading
     emit(AuthLoading());
 
