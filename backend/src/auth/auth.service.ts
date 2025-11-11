@@ -24,11 +24,11 @@ export class AuthService {
       
       //check if username or email already exists inside the database
       try {
-         const fetchedUsername = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE username = $1", [username])
-         if (fetchedUsername.rows.length >= 1) { throw new HttpException('Username already taken', 401) }
+         const fetchedUsername = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE username = $1", [username]);
+         if (fetchedUsername.rows.length >= 1) { throw new HttpException('Username already taken', 401); }
 
-         const fetchedEmail = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE email = $1", [email])
-         if (fetchedEmail.rows.length >= 1) { throw new HttpException('Email already in use', 401) }
+         const fetchedEmail = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE email = $1", [email]);
+         if (fetchedEmail.rows.length >= 1) { throw new HttpException('Email already in use', 401); }
       }
       catch (error) {
          if (error instanceof HttpException) { throw error }
@@ -51,7 +51,7 @@ export class AuthService {
       let createdUser: DatabaseUserDto;
       try {
          const createdUserData = await this.database.query<DatabaseUserDto>(
-            "INSERT INTO Users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username", 
+            "INSERT INTO users_private (username, email, password) VALUES ($1, $2, $3) RETURNING id, username", 
             [username, email, hashedPassword]
          );
          createdUser = createdUserData.rows[0];
@@ -71,8 +71,10 @@ export class AuthService {
       try {
          const fetchedData = await this.database.query<DatabaseUserDto>("SELECT * FROM users_private WHERE username = $1", [username])
          fetchedUser = fetchedData.rows[0] ?? null;
+         if (!fetchedUser) { throw new HttpException('Username not found', 404); }
       }
       catch (error) {
+         if (error instanceof HttpException ) { throw error; }
          console.error("\x1b[31m[AuthService] Server failed to fetch username from the database\x1b[0m\n", error);
          throw new HttpException('Internal server error', 500);
       }
@@ -83,8 +85,10 @@ export class AuthService {
       let correctPassword: boolean = false;
       try {
          correctPassword = await bcrypt.compare(password, fetchedUser.password);
+         if (!correctPassword) { throw new HttpException('incorrect password', 401); }
       }
       catch (error) {
+         if (error instanceof HttpException ) { throw error; }
          console.error("\x1b[31m[AuthService] Server failed to verify if the clients password was correct\x1b[0m\n", error);
          throw new HttpException("Internal server error", 500);
       }

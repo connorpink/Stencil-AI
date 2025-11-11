@@ -140,12 +140,17 @@ class _MainAppState extends State<MainApp> {
   }
 }
 
-// event listener for changes to the users authentication status
+// event listener for changes to the users authentication status, watches for changes to Authenticated and Unauthenticated
 class GoRouterRefreshStream extends ChangeNotifier {
   late final StreamSubscription<dynamic> _sub;
+  dynamic _lastState; // Keep track of the previous state
 
   GoRouterRefreshStream(Stream<dynamic> stream) {
-    _sub = stream.asBroadcastStream().listen((_) { return notifyListeners(); });
+    _sub = stream.asBroadcastStream().listen((state) {
+      // Only react when the state changes to Authenticated or Unauthenticated
+      if (state.runtimeType != _lastState?.runtimeType && (state is Authenticated || state is Unauthenticated)) { notifyListeners(); }
+      _lastState = state;
+    });
   }
 
   @override

@@ -1,35 +1,64 @@
-
 import 'package:flutter_frontend/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository.dart';
+import 'package:flutter_frontend/services/logger.dart';
 import '../../../services/dio_client.dart';
 
 class NestJsAuthRepo implements AuthRepository {
 
   @override
   Future<AppUser?> loginWithUsernamePassword(String username, String password) async {
+
+    late final AppUser? appUser;
+    late final String responseMessage;
     try {
-      final response = await dio.sendRequest<AppUser>('POST', '/auth/login', data: {username, password});
-      AppUser? appUser = response.data;
-      if (appUser != null) { return appUser; }
-      else { throw Exception(response.message); }
+      final response = await dio.sendRequest<AppUser>(
+        'POST', 
+        '/auth/login', 
+        data: {'username': username, 'password': password},
+        fromJson: AppUser.fromJson
+      );
+      appUser = response.data;
+      responseMessage = response.message;
     }
-    catch (error) {
-      throw Exception('Login failed: $error');
+    catch (error, stack) {
+      appLogger.e(
+        "dio failed to register user with uncaught exception",
+        error: error,
+        stackTrace: stack,
+      );
+      throw 'dio failed to catch exception';
     }
+
+    if (appUser != null) { return appUser; }
+    else { throw responseMessage; }
   }
 
   @override
   Future<AppUser?> registerWithUsernamePassword(String username, String email, String password) async {
+
+    late final AppUser? appUser;
+    late final String responseMessage;
     try {
-      final response = await dio.sendRequest<AppUser>('POST','/auth/register', data: {username, email, password});
-      AppUser? appUser = response.data;
-      if (appUser != null) { return appUser; }
-      else { throw Exception(response.message); }
+      final ApiResponse response = await dio.sendRequest<AppUser>(
+        'POST',
+        '/auth/register', 
+        data: {'username': username, 'email': email, 'password': password},
+        fromJson: AppUser.fromJson
+      );
+      appUser = response.data;
+      responseMessage = response.message;
     }
-    catch (error) {
-      print('Register failed: $error');
-      throw Exception('Internal server error');
+    catch (error, stack) {
+      appLogger.e(
+        "dio failed to register user with uncaught exception",
+        error: error,
+        stackTrace: stack,
+      );
+      throw 'dio failed to catch exception';
     }
+
+    if (appUser != null) { return appUser; }
+    else { throw responseMessage; }
   }
   
   @override

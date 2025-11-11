@@ -2,7 +2,6 @@ import { Body, Controller, Post, Get, HttpException, UseGuards, Req, Res } from 
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from './guards/jwt.guard';
-import { LocalGuard } from './guards/local.guard';
 
 import { UserDto } from 'src/server.types';
 import { RequestRegisterDto } from './dto/register.dto';
@@ -23,27 +22,39 @@ export class AuthController {
    }
 
    @Post('register')
-   async register(@Body() payload: RequestRegisterDto, @Req() req: Request) {
+   async register(@Body() payload: RequestRegisterDto, @Res({passthrough: true}) res: Response) {
+
+      // create user inside the database
       const createdUser = await this.authService.registerUser(payload);
       if (!createdUser) { throw new HttpException('AuthService failed to create new user', 500); }
-      const createdTokens = await this.authService.createTokens(createdUser);
-      if (!createdTokens) { throw new HttpException('AuthService failed to created refresh tokens', 500); }
-      return createdTokens;
+
+      // create authentication tokens
+      const {accessToken, refreshToken} = await this.authService.createTokens(createdUser);
+      if (!accessToken || !refreshToken) { throw new HttpException('AuthService failed to create tokens', 500); }
+
+      // save tokens client side as cookies
+      res.cookie('access_token', accessToken);
+      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000 /* 30 days */ });
+
+      return createdUser;
    }
 
    @Post('login')
-   @UseGuards(LocalGuard)
    async login(@Body() payload: RequestLoginDto, @Res({passthrough: true}) res: Response) {
+
+      // verify users credentials
       const validUser = await this.authService.validateUser(payload);
       if (!validUser) { throw new HttpException('AuthService failed to validate user', 500); }
+
+      // create authentication tokens
       const { accessToken, refreshToken } = await this.authService.createTokens(validUser);
       if (!accessToken || !refreshToken) { throw new HttpException('AuthService failed to create tokens', 500); }
 
-      // send tokens back to client in the form of cookies
+      // save tokens client side as cookies
       res.cookie('access_token', accessToken);
       res.cookie('refresh_token', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000 /* 30 days */ });
 
-      return { message: 'Login successful', validUser };
+      return validUser;
    }
 
    @Post('deleteAccount')

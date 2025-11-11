@@ -4,6 +4,7 @@ import 'package:flutter_frontend/features/auth/domain/entities/app_user.dart';
 import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_states.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_frontend/services/logger.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository authRepo;
@@ -67,9 +68,14 @@ class AuthCubit extends Cubit<AuthState> {
         emit(Unauthenticated());
       }
     }
-    catch (error) {
-      emit(AuthError(error.toString()));
-      rethrow;
+    catch (error, stack) {
+      String errorString = error.toString();
+      appLogger.e(
+        'Something went wrong registering the user',
+        error: error,
+        stackTrace: stack
+      );
+      emit(AuthError(errorString));
     }
   }
 

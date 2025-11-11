@@ -15,7 +15,7 @@ async function bootstrap() {
     console.log("REQUEST RECEIVED!");
     console.log("->", req.method, req.path);
     next();
-  })
+  });
 
   app.enableCors();
 
