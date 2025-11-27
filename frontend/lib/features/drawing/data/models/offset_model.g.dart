@@ -1,29 +1,29 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'offset.dart';
+part of 'offset_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class OffsetCustomAdapter extends TypeAdapter<OffsetCustom> {
+class OffsetModelAdapter extends TypeAdapter<OffsetModel> {
   @override
-  final int typeId = 0;
+  final int typeId = 3;
 
   @override
-  OffsetCustom read(BinaryReader reader) {
+  OffsetModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return OffsetCustom(
+    return OffsetModel(
       fields[0] as double,
       fields[1] as double,
     );
   }
 
   @override
-  void write(BinaryWriter writer, OffsetCustom obj) {
+  void write(BinaryWriter writer, OffsetModel obj) {
     writer
       ..writeByte(2)
       ..writeByte(0)
@@ -38,7 +38,7 @@ class OffsetCustomAdapter extends TypeAdapter<OffsetCustom> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is OffsetCustomAdapter &&
+      other is OffsetModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

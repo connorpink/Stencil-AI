@@ -1,38 +1,44 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'stroke.dart';
+part of 'artwork_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class StrokeAdapter extends TypeAdapter<Stroke> {
+class ArtworkModelAdapter extends TypeAdapter<ArtworkModel> {
   @override
-  final int typeId = 1;
+  final int typeId = 0;
 
   @override
-  Stroke read(BinaryReader reader) {
+  ArtworkModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Stroke(
-      points: (fields[0] as List).cast<OffsetCustom>(),
-      color: fields[1] as int,
-      brushSize: fields[2] as double,
+    return ArtworkModel(
+      id: fields[0] as String,
+      title: fields[1] as String,
+      description: fields[2] as String,
+      stencilList: (fields[3] as List).cast<StencilModel>(),
+      strokeList: (fields[4] as List).cast<StrokeModel>(),
     );
   }
 
   @override
-  void write(BinaryWriter writer, Stroke obj) {
+  void write(BinaryWriter writer, ArtworkModel obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.points)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.color)
+      ..write(obj.title)
       ..writeByte(2)
-      ..write(obj.brushSize);
+      ..write(obj.description)
+      ..writeByte(3)
+      ..write(obj.stencilList)
+      ..writeByte(4)
+      ..write(obj.strokeList);
   }
 
   @override
@@ -41,7 +47,7 @@ class StrokeAdapter extends TypeAdapter<Stroke> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is StrokeAdapter &&
+      other is ArtworkModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

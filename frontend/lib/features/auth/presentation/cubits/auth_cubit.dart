@@ -1,19 +1,19 @@
 // cubits are responsible for state management
 
-import 'package:flutter_frontend/features/auth/domain/entities/app_user.dart';
-import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository.dart';
+import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
+import 'package:flutter_frontend/features/auth/domain/auth_repository_interface.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_states.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_frontend/services/logger.dart';
 
 class AuthCubit extends Cubit<AuthState> {
-  final AuthRepository authRepo;
-  AppUser? _currentUser;
+  final AuthRepositoryInterface authRepository;
+  UserEntity? _currentUser;
 
-  AuthCubit({required this.authRepo}) : super(AuthInitial());
+  AuthCubit({required this.authRepository}) : super(AuthInitial());
 
   // get current user
-  AppUser? get currentUser => _currentUser;
+  UserEntity? get currentUser => _currentUser;
 
   // check if user is authenticated
   Future<void> checkAuth() async {
@@ -22,7 +22,7 @@ class AuthCubit extends Cubit<AuthState> {
 
     try {
       // get current user
-      final AppUser? user = await authRepo.getCurrentUser();
+      final UserEntity? user = await authRepository.getCurrentUser();
 
       if (user != null) {
         _currentUser = user;
@@ -41,7 +41,7 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> login(String username, String password) async {
     try {
       emit(AuthLoading());
-      final user = await authRepo.loginWithUsernamePassword(username, password);
+      final user = await authRepository.loginWithUsernamePassword(username, password);
 
       if (user != null) {
         _currentUser = user;
@@ -59,7 +59,7 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> register(String username, String email, String password) async {
     try {
       emit(AuthLoading());
-      final user = await authRepo.registerWithUsernamePassword(username, email, password);
+      final user = await authRepository.registerWithUsernamePassword(username, email, password);
       if (user != null) {
         _currentUser = user;
         emit(Authenticated(user));
@@ -81,13 +81,13 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> logout() async {
     emit(AuthLoading());
-    await authRepo.logout();
+    await authRepository.logout();
     emit(Unauthenticated());
   }
 
   Future<String> forgotPassword(String email) async {
     try {
-      final message = await authRepo.sendPasswordResetEmail(email);
+      final message = await authRepository.sendPasswordResetEmail(email);
       return message;
     }
     catch (error) {
@@ -98,7 +98,7 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> deleteAccount() async {
     try {
       emit(AuthLoading());
-      await authRepo.deleteAccount();
+      await authRepository.deleteAccount();
       emit(Unauthenticated());
     }
     catch (error) {

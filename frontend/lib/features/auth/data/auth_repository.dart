@@ -1,21 +1,21 @@
-import 'package:flutter_frontend/features/auth/domain/entities/app_user.dart';
-import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository.dart';
+import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
+import 'package:flutter_frontend/features/auth/domain/auth_repository_interface.dart';
 import 'package:flutter_frontend/services/logger.dart';
 import '../../../services/dio_client.dart';
 
-class NestJsAuthRepo implements AuthRepository {
+class AuthRepository implements AuthRepositoryInterface {
 
   @override
-  Future<AppUser?> loginWithUsernamePassword(String username, String password) async {
+  Future<UserEntity?> loginWithUsernamePassword(String username, String password) async {
 
-    late final AppUser? appUser;
+    late final UserEntity? appUser;
     late final String responseMessage;
     try {
-      final response = await dio.sendRequest<AppUser>(
+      final response = await dio.sendRequest<UserEntity>(
         'POST', 
         '/auth/login', 
         data: {'username': username, 'password': password},
-        fromJson: AppUser.fromJson
+        fromJson: UserEntity.fromJson
       );
       appUser = response.data;
       responseMessage = response.message;
@@ -34,16 +34,16 @@ class NestJsAuthRepo implements AuthRepository {
   }
 
   @override
-  Future<AppUser?> registerWithUsernamePassword(String username, String email, String password) async {
+  Future<UserEntity?> registerWithUsernamePassword(String username, String email, String password) async {
 
-    late final AppUser? appUser;
+    late final UserEntity? appUser;
     late final String responseMessage;
     try {
-      final ApiResponse response = await dio.sendRequest<AppUser>(
+      final ApiResponse response = await dio.sendRequest<UserEntity>(
         'POST',
         '/auth/register', 
         data: {'username': username, 'email': email, 'password': password},
-        fromJson: AppUser.fromJson
+        fromJson: UserEntity.fromJson
       );
       appUser = response.data;
       responseMessage = response.message;
@@ -72,9 +72,9 @@ class NestJsAuthRepo implements AuthRepository {
   }
   
   @override
-  Future<AppUser?> getCurrentUser() async {
+  Future<UserEntity?> getCurrentUser() async {
     try {
-      final response = await dio.sendRequest<AppUser>('GET', '/auth/status');
+      final response = await dio.sendRequest<UserEntity>('GET', '/auth/status');
       if (response.code == 200) { return response.data; }
       if (response.code == 401) { return null; }
       else { throw Exception("Failed to get status from server"); }

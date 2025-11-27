@@ -1,16 +1,16 @@
-import 'dart:typed_data';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_frontend/features/drawing/domain/entities/artwork_entity.dart';
+import 'package:flutter_frontend/features/drawing/domain/repositories/artwork_repository_interface.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/features/drawing/presentation/widgets/drawing_preview.dart';
-import 'package:hive/hive.dart';
-import '../../data/models/stroke.dart';
+
+import 'package:flutter_frontend/features/drawing/domain/entities/stroke_entity.dart';
 
 class DrawScreen extends StatefulWidget {
-  final String? name;
+  final String? id;
 
   const DrawScreen({
     super.key,
-    this.name,
+    this.id,
   });
 
   @override
@@ -18,57 +18,54 @@ class DrawScreen extends StatefulWidget {
 }
 
 class _DrawScreenState extends State<DrawScreen> {
-  List<Stroke> _strokes = [];
-  List<Stroke> _redoStrokes = [];
+
+  late ArtworkEntity _artwork;
+  late ArtworkRepositoryInterface _artworkRepository;
+
+  // basic default artwork entity if a valid one doesn't already exist
+  ArtworkEntity freshArtworkEntity = ArtworkEntity(
+    id: "-1", // -1 is the id for an unsaved artwork
+    title: "New Artwork",
+    description: "none",
+    stencilList: [],
+    strokeList: []
+  );
+
+  // stroke variables
+    // current strokes can be found in artwork.strokeList
+  List<StrokeEntity> _redoStrokes = [];
   List<Offset> _currentPoints = [];
+
+  // brush settings
   Color _selectedColor = Colors.black;
   double _brushSize = 4.0;
-  late Box<Map<dynamic, dynamic>> _drawingBox;
-  String? _drawingName;
 
   @override
   void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeHive();
-    });
     super.initState();
+    _artworkRepository = context.read<ArtworkRepositoryInterface>();
+    if (widget.id == null) { _artwork = freshArtworkEntity; }
+    else { _artwork = _artworkRepository.fetchArtwork(widget.id!) ?? freshArtworkEntity; }
   }
 
-  Future<void> _initializeHive() async {
-    _drawingBox = Hive.box<Map<dynamic, dynamic>>('drawings');
-    final name = widget.name;
-    if(name != null) {
-      final rawData = _drawingBox.get(name);
-      setState(() {
-        _drawingName = name;
-        _strokes = (rawData?['strokes'] as List<dynamic>?)?.cast<Stroke>() ?? [];
-      });
-    }
-  }
+  Future<void> _saveDrawing(String title) async {
+    _artworkRepository.saveArtwork(_artwork);
 
-  Future<void> _saveDrawing(String name) async {
-
-    final Uint8List thumbnail = await generateThumbnail(_strokes, 200, 200);
-
-    await _drawingBox.put(name, {
-      'strokes': _strokes,
-      'thumbnail': thumbnail
-    });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Drawing $name saved!'))
+      SnackBar(content: Text('Drawing $title saved!'))
     );
   }
 
   // Popup for when the user tries to save there drawing
   void _showSaveDialog() {
-    final TextEditingController _controller = TextEditingController();
+    final TextEditingController controller = TextEditingController();
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text("Save Drawing"),
           content: TextField(
-            controller: _controller,
+            controller: controller,
             decoration: const InputDecoration(hintText: 'Enter drawing name'),
           ),
           actions: [
@@ -78,12 +75,12 @@ class _DrawScreenState extends State<DrawScreen> {
             child: Text('Cancel')
             ),
             TextButton(onPressed: (){
-              final name = _controller.text.trim();
-              if(name.isNotEmpty){
+              final newTitle = controller.text.trim();
+              if(newTitle.isNotEmpty){
                 setState(() {
-                  _drawingName = name;
+                  _artwork.title = newTitle;
                 });
-                _saveDrawing(name);
+                _saveDrawing(newTitle);
                 Navigator.of(context).pop();
               }
             }, 
@@ -104,7 +101,7 @@ class _DrawScreenState extends State<DrawScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_drawingName ?? "New creation")
+        title: Text(_artwork.title)
       ),
 
       body: Column(
@@ -124,8 +121,8 @@ class _DrawScreenState extends State<DrawScreen> {
                 },
                 onPanEnd: (details) {
                   setState(() {
-                    _strokes.add(
-                      Stroke.fromOffset(
+                    _artwork.strokeList.add(
+                      StrokeEntity.fromOffset(
                         offsets: List<Offset>.of(_currentPoints), 
                         color: _selectedColor,
                         brushSize: _brushSize
@@ -137,7 +134,7 @@ class _DrawScreenState extends State<DrawScreen> {
                 },
                 child: CustomPaint(
                   painter: DrawPainter(
-                    strokes: _strokes,
+                    strokes: _artwork.strokeList,
                     currentPoints: _currentPoints,
                     currentColor: _selectedColor,
                     currentBrushSize: _brushSize
@@ -165,9 +162,9 @@ class _DrawScreenState extends State<DrawScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            onPressed: _strokes.isNotEmpty ? () {
+            onPressed: _artwork.strokeList.isNotEmpty ? () {
               setState(() {
-                _redoStrokes.add(_strokes.removeLast());
+                _redoStrokes.add(_artwork.strokeList.removeLast());
               });
             } : null,
             icon: const Icon(Icons.undo)
@@ -175,7 +172,7 @@ class _DrawScreenState extends State<DrawScreen> {
           IconButton(
             onPressed: _redoStrokes.isNotEmpty ? () {
               setState(() {
-                _strokes.add(_redoStrokes.removeLast());
+                _artwork.strokeList.add(_redoStrokes.removeLast());
               });
             } : null,
             icon: const Icon(Icons.redo)
@@ -241,7 +238,7 @@ class _DrawScreenState extends State<DrawScreen> {
 }
 
 class DrawPainter extends CustomPainter {
-  final List<Stroke> strokes;
+  final List<StrokeEntity> strokes;
   final List<Offset> currentPoints;
   final Color currentColor;
   final double currentBrushSize;
@@ -252,7 +249,7 @@ class DrawPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final stroke in strokes) {
       final paint = Paint()
-        ..color = Color(stroke.color)
+        ..color = stroke.color
         ..strokeCap = StrokeCap.round
         ..strokeWidth = stroke.brushSize;
 

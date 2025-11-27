@@ -1,10 +1,11 @@
 import 'dart:typed_data';
 import 'dart:ui';
-import '../../data/models/stroke.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/features/drawing/domain/entities/stroke_entity.dart';
 
-Future<Uint8List> generateThumbnail(List<Stroke> strokes, double width, double height) async {
+Future<Uint8List> generateThumbnail(List<StrokeEntity> strokes, double width, double height) async {
 
+  // variables used to store the farthest x and y values of the drawing
   double minX = double.infinity;
   double minY = double.infinity;
   double maxX = double.negativeInfinity;
@@ -21,6 +22,8 @@ Future<Uint8List> generateThumbnail(List<Stroke> strokes, double width, double h
       }
     }
   }
+
+  // calculate the size of the image
   final drawingWidth = maxX - minX;
   final drawingHeight = maxY - minY;
 
@@ -42,7 +45,7 @@ Future<Uint8List> generateThumbnail(List<Stroke> strokes, double width, double h
   // create the drawing for the thumbnail
   for (final stroke in strokes) {
     final strokePaint = Paint()
-      ..color = Color(stroke.color)
+      ..color = stroke.color
       ..strokeCap = StrokeCap.round
       ..strokeWidth = stroke.brushSize * scale;
     final points = stroke.offsetPoints;

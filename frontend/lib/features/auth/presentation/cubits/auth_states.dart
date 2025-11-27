@@ -1,6 +1,5 @@
 
-
-import 'package:flutter_frontend/features/auth/domain/entities/app_user.dart';
+import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
 
 abstract class AuthState {}
 
@@ -9,7 +8,7 @@ class AuthInitial extends AuthState {}
 class AuthLoading extends  AuthState {}
 
 class Authenticated extends AuthState {
-  final AppUser user;
+  final UserEntity user;
   Authenticated(this.user);
 }
 

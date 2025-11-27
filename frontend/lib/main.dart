@@ -1,36 +1,46 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_frontend/features/drawing/data/datasources/artwork_local_datasource.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'features/drawing/data/models/stroke.dart';
+import 'features/drawing/data/models/stroke_model.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
 
-import 'package:flutter_frontend/features/auth/data/nestjs_auth_repo.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_frontend/features/drawing/data/models/artwork_model.dart';
+import 'package:flutter_frontend/features/drawing/data/models/stencil_model.dart';
+import 'package:flutter_frontend/features/drawing/data/repositories/artwork_repository_logic.dart';
+import 'package:flutter_frontend/features/drawing/domain/repositories/artwork_repository_interface.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/prompt_screen.dart';
+import 'package:flutter_frontend/features/auth/data/auth_repository.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_states.dart';
 import 'package:flutter_frontend/features/auth/presentation/screens/auth_screen.dart';
-import 'package:flutter_frontend/features/drawing/data/models/offset.dart';
+import 'package:flutter_frontend/features/drawing/data/models/offset_model.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/home_screen.dart';
-import 'package:flutter_frontend/shared/screens/splash_screen.dart';
+import 'package:flutter_frontend/shared/splash_screen.dart';
 import 'package:flutter_frontend/themes/light_mode.dart';
 
 void main() async {
   /*
-  Setup hive (client side database) before proceeding to the main application
+    Setup hive (client side database) before proceeding to the main application
   */
 
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 
   // Register the adapters
-  Hive.registerAdapter(OffsetCustomAdapter());
-  Hive.registerAdapter(StrokeAdapter());
+  Hive.registerAdapter(ArtworkModelAdapter());
+  Hive.registerAdapter(StencilModelAdapter());
+  Hive.registerAdapter(StrokeModelAdapter());
+  Hive.registerAdapter(OffsetModelAdapter());
 
   // open hive
-  await Hive.openBox<Map<dynamic, dynamic>>('drawings');
+  await Hive.openBox<ArtworkModel>('artwork');
 
-  // setup the reset of the application
+  /*
+    Setup the main application
+  */
   runApp(MainApp());
 }
 
@@ -43,27 +53,29 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   late final AuthCubit authCubit;
+  late final Box<ArtworkModel> artworkBox;
   GoRouter? _router;
   bool _appReady = false;
 
-  final authRepo = NestJsAuthRepo();
+  final authRepository = AuthRepository();
 
   @override
   void initState() {
     super.initState();
-    authCubit = AuthCubit(authRepo: authRepo);
+    authCubit = AuthCubit(authRepository: authRepository);
     _appStartup();
   }
 
   Future<void> _appStartup() async {
-    await authCubit.checkAuth();
-
     // pick the starting location
     final initialLocation = switch (authCubit.state) {
       Unauthenticated() => '/auth',
       _ => '/home',
     };
 
+    // configure hive while the splash screen plays
+    artworkBox = Hive.box<ArtworkModel>('artwork');
+    await authCubit.checkAuth();
     await Future.delayed(const Duration(seconds: 6));
     
     // create the router
@@ -83,14 +95,18 @@ class _MainAppState extends State<MainApp> {
           builder: (context, state) { return const HomeScreen(); }
         ),
         GoRoute(
+          path: '/createPrompt',
+          builder: (context, state) { return const PromptScreen(); }
+        ),
+        GoRoute(
           path: '/draw',
           builder: (context, state) { 
-            final name = state.extra as String?;
-            return DrawScreen(name: name);
+            final id = state.extra as String?;
+            return DrawScreen(id: id);
           }
         ),
         GoRoute(
-          path: '/auth',
+          path: '/auth',  
           builder: (context, state) { return const AuthScreen(); }
         ),
       ],
@@ -124,7 +140,14 @@ class _MainAppState extends State<MainApp> {
 
     // once app is ready call the actual page
     return MultiBlocProvider(
-      providers: [BlocProvider<AuthCubit>.value(value: authCubit)], 
+      providers: [
+        BlocProvider<AuthCubit>.value(value: authCubit),
+        RepositoryProvider<ArtworkRepositoryInterface>(
+          create: (context) => ArtworkRepositoryLogic(
+            localDatasource: ArtworkLocalDatasource(artworkBox)
+          ),
+        )
+      ], 
       child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
         theme: lightMode,
