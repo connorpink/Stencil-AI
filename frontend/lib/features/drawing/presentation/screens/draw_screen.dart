@@ -24,7 +24,6 @@ class _DrawScreenState extends State<DrawScreen> {
 
   // basic default artwork entity if a valid one doesn't already exist
   ArtworkEntity freshArtworkEntity = ArtworkEntity(
-    id: "-1", // -1 is the id for an unsaved artwork
     title: "New Artwork",
     description: "none",
     stencilList: [],

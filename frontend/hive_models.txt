@@ -2,8 +2,10 @@ Hive is the client side database for saving the users drawings
 These are the models being saved inside hive
 
 ArtworkModel - typeId: 0
-   int id
-   String Title
+   String id
+   String? serverId
+   String title
+   String description
    List<StencilModel> stencilList
    List<StrokeModel> strokeList
 

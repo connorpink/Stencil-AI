@@ -18,26 +18,29 @@ class ArtworkModelAdapter extends TypeAdapter<ArtworkModel> {
     };
     return ArtworkModel(
       id: fields[0] as String,
-      title: fields[1] as String,
-      description: fields[2] as String,
-      stencilList: (fields[3] as List).cast<StencilModel>(),
-      strokeList: (fields[4] as List).cast<StrokeModel>(),
+      serverId: fields[1] as String?,
+      title: fields[2] as String,
+      description: fields[3] as String,
+      stencilList: (fields[4] as List).cast<StencilModel>(),
+      strokeList: (fields[5] as List).cast<StrokeModel>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, ArtworkModel obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.title)
+      ..write(obj.serverId)
       ..writeByte(2)
-      ..write(obj.description)
+      ..write(obj.title)
       ..writeByte(3)
-      ..write(obj.stencilList)
+      ..write(obj.description)
       ..writeByte(4)
+      ..write(obj.stencilList)
+      ..writeByte(5)
       ..write(obj.strokeList);
   }
 

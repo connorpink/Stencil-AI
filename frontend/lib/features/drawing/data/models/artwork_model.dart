@@ -12,19 +12,23 @@ class ArtworkModel {
   final String id;
 
   @HiveField(1)
-  final String title;
+  final String? serverId; // server assigned id, null until object is synced with the server
 
   @HiveField(2)
-  final String description;
+  final String title;
 
   @HiveField(3)
-  final List<StencilModel> stencilList;
+  final String description;
 
   @HiveField(4)
+  final List<StencilModel> stencilList;
+
+  @HiveField(5)
   final List<StrokeModel> strokeList;
 
   ArtworkModel({
     required this.id,
+    this.serverId,
     required this.title,
     required this.description,
     required this.stencilList,
@@ -34,6 +38,7 @@ class ArtworkModel {
   ArtworkEntity toEntity() {
     return ArtworkEntity(
       id: id,  
+      serverId: serverId,
       title: title,
       description: description,
       stencilList: stencilList.map((stencil) => stencil.toEntity()).toList(),
@@ -44,6 +49,7 @@ class ArtworkModel {
   factory ArtworkModel.fromEntity(ArtworkEntity entity) {
     return ArtworkModel(
       id: entity.id,
+      serverId: entity.serverId,
       title: entity.title,
       description: entity.description,
       stencilList: entity.stencilList.map((stencil) => StencilModel.fromEntity(stencil)).toList(),
