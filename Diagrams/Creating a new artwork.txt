@@ -1,0 +1,31 @@
+title Creating a new artwork
+
+actor User
+participant Frontend
+database Hive
+participant Backend
+rparticipant OpenAI
+rparticipant Oeno
+database Database
+
+User -> Frontend: Select "new artwork"
+Frontend -> User: Request a prompt
+User -> Frontend: Submit a prompt
+
+Frontend -> Backend: Request the creation of a new \nartwork object with prompt
+
+Backend -> OpenAI: Request prompt be broken \n up into n subprompts
+OpenAI -> Backend: Return n subprompts
+
+group loop n times
+Backend -> Oeno: Request subprompt be turned into a stencil
+Oeno -> Backend: Return stencil
+end
+
+Backend -> Database: Save new artwork object containing prompt, subprompts, and stenciles
+
+Backend -> Frontend: Return new artwork object
+
+Frontend -> Hive: Save artwork object
+
+Frontend -> User: Use the cnavas to let the \nuser interact with the newly \ncreated artwrok object

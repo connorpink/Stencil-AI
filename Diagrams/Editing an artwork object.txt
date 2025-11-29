@@ -1,0 +1,21 @@
+title Editing an artwork object
+
+actor User
+participant Frontend
+database Hive
+participant Backend
+database Database
+
+group loop 50 times [+1 loop for each undo event]
+User -> Frontend: add a new stroke to the \nartwork object
+Frontend -> Frontend: If the number of strokes is \nlarger than 50, remove the \noldest one
+end
+Frontend -> Frontend: create a "snapshot" \nof the current artwork
+Frontend -> Hive: Update the artwork object
+Frontend -> Backend: Send over the current state of the artwork object
+Backend -> Database: Update the artwork object
+
+User -> Frontend: Trigger save event
+Frontend -> Hive: Update the artwork object
+Frontend -> Backend: Send over the current state of the artwork object
+Backend -> Database:Update the artwork object
