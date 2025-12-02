@@ -51,7 +51,7 @@ class StencilApp:
                     checkpoint_path = "mrpink925/stencilai-checkpoint-1000"
 
             self.generator = StencilGenerator(
-                model_id="stabilityai/stable-diffusion-2-1-base",
+                model_id="Manojb/stable-diffusion-2-1-base",
                 checkpoint_path=checkpoint_path,
                 use_fp16=torch.cuda.is_available()
             )
