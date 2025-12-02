@@ -9,6 +9,7 @@ dependencies = [
     "diffusers>=0.21.0",
     "en-core-web-sm",
     "gradio>=4.0.0",
+    "huggingface-hub>=0.16.0",
     "numpy>=1.24.0",
     "opencv-python>=4.8.0",
     "pillow>=9.0.0",

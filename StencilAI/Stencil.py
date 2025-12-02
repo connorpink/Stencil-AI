@@ -50,7 +50,7 @@ class StencilGenerator:
 
     def __init__(
         self,
-        model_id: str = "stabilityai/stable-diffusion-2-1-base",
+        model_id: str = "Manojb/stable-diffusion-2-1-base",
         # model_id: str = "runwayml/stable-diffusion-v1-5",
         checkpoint_path: Optional[str] = None,
         device: Optional[str] = None,
@@ -131,10 +131,11 @@ class StencilGenerator:
 
     def _load_from_checkpoint(self, checkpoint_path: str):
         """
-        Load a fine-tuned model from checkpoint directory.
+        Load a fine-tuned model from checkpoint directory or HuggingFace Hub.
 
         Args:
-            checkpoint_path: Path to checkpoint directory containing UNet
+            checkpoint_path: Path to checkpoint directory containing UNet,
+                           or HuggingFace Hub model ID (e.g., "username/model-name")
         """
         print(f"Loading fine-tuned checkpoint from {checkpoint_path} on {self.device}...")
 
@@ -154,9 +155,16 @@ class StencilGenerator:
         scheduler = PNDMScheduler.from_pretrained(base_model, subfolder="scheduler")
 
         # Load fine-tuned UNet from checkpoint
-        unet_path = f"{checkpoint_path}/unet"
+        # Handles both local paths and HuggingFace Hub model IDs
+        if os.path.exists(checkpoint_path):
+            # Local path - append /unet subdirectory
+            unet_path = f"{checkpoint_path}/unet"
+        else:
+            # Assume it's a HuggingFace Hub model ID
+            unet_path = checkpoint_path
+
         print(f"Loading fine-tuned UNet from {unet_path}...")
-        unet = UNet2DConditionModel.from_pretrained(unet_path)
+        unet = UNet2DConditionModel.from_pretrained(unet_path, subfolder="unet" if not os.path.exists(checkpoint_path) else None)
 
         # Assemble pipeline
         print("Assembling pipeline...")

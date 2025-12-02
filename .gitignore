@@ -1,4 +1,6 @@
 *.DS_Store
 */.gradio
 *.pem
-*.safetensors
+
+# Model checkpoints (stored on HuggingFace Hub instead)
+StencilAI/Fine-tuning/checkpoint-*/

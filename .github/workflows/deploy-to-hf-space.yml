@@ -1,0 +1,69 @@
+name: Deploy to HuggingFace Space
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'StencilAI/Stencil.py'
+      - 'StencilAI/StencilCV.py'
+      - 'StencilAI/app.py'
+      - 'StencilAI/requirements.txt'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Clone HuggingFace Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git clone https://mrpink925:$HF_TOKEN@huggingface.co/spaces/mrpink925/StencilAI_Demo hf_space
+
+      - name: Copy code files to HuggingFace Space
+        run: |
+          # Copy main Python files
+          cp StencilAI/Stencil.py hf_space/
+          cp StencilAI/StencilCV.py hf_space/
+          cp StencilAI/app.py hf_space/
+          cp StencilAI/requirements.txt hf_space/
+
+          # Note: Models are loaded from HuggingFace Hub at runtime
+          # No need to copy checkpoint files
+
+      - name: Commit and push to HuggingFace Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          cd hf_space
+          git add Stencil.py StencilCV.py app.py requirements.txt
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Update code from GitHub Actions - $(date '+%Y-%m-%d %H:%M:%S')"
+          git push https://mrpink925:$HF_TOKEN@huggingface.co/spaces/mrpink925/StencilAI_Demo main
+
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo " Successfully deployed code to HuggingFace Space!"
+          echo " Space URL: https://huggingface.co/spaces/mrpink925/StencilAI_Demo"
+          echo " Models are loaded from HuggingFace Hub at runtime"

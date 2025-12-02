@@ -11,6 +11,7 @@ from StencilCV import StencilCV
 import torch
 from typing import Optional
 import numpy as np
+import os
 
 MAX_IMAGES = 4
 
@@ -36,11 +37,18 @@ class StencilApp:
             print(f"Initializing Stencil Generator with {model_type}...")
 
             # Determine checkpoint path based on model type
+            # Can be local path or HuggingFace Hub model ID
             checkpoint_path = None
             if model_type == "Checkpoint-500":
+                # Try local path first, fallback to HuggingFace Hub
                 checkpoint_path = "./Fine-tuning/checkpoint-500"
+                if not os.path.exists(checkpoint_path):
+                    checkpoint_path = "mrpink925/stencilai-checkpoint-500"
             elif model_type == "Checkpoint-1000":
+                # Try local path first, fallback to HuggingFace Hub
                 checkpoint_path = "./Fine-tuning/checkpoint-1000"
+                if not os.path.exists(checkpoint_path):
+                    checkpoint_path = "mrpink925/stencilai-checkpoint-1000"
 
             self.generator = StencilGenerator(
                 model_id="stabilityai/stable-diffusion-2-1-base",
