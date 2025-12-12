@@ -11,7 +11,7 @@ async function bootstrap() {
 
   // general logger for incoming requests
   app.use((req: Request, _res: Response, next: NextFunction) => {
-    console.log("\n\n\n")
+    console.log("\n\n\n");
     console.log("REQUEST RECEIVED!");
     console.log("->", req.method, req.path);
     next();

@@ -34,4 +34,6 @@ export class DatabaseService implements OnModuleDestroy {
 		await this.pool.end();
 		console.warn('PostgreSQL connection closed')
 	}
+
+	
 }

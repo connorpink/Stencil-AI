@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 import { DatabaseService } from '../database/database.service'
 
 import { UserDto } from 'src/server.types';
-import { DatabaseRefreshTokenDto, DatabaseUserDto } from '../database/database.types'
+import { DatabaseRefreshTokenDto, DatabaseUserDto } from '../database/postgre.types'
 import { RequestLoginDto } from './dto/login.dto';
 import { RequestRegisterDto } from './dto/register.dto';
 
