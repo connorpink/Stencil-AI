@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter_frontend/features/auth/presentation/widgets/auth_button_widget.dart';
+import 'package:flutter_frontend/features/auth/presentation/widgets/auth_error.dart';
 import 'package:flutter_frontend/features/auth/presentation/widgets/auth_textfield_widget.dart';
 
 class RegisterScreen extends StatefulWidget{
@@ -46,13 +47,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final authCubit = context.read<AuthCubit>();
 
     // ensure fields are valid
-    if (username.isEmpty) { errorMessage = "invalid username"; return; }
-    if (email.isEmpty) { errorMessage = "invalid email"; return; }
-    if (password.isEmpty) { errorMessage = "invalid password"; return; }
-    if (password != confirmPassword) { errorMessage = "passwords do not match"; return; }
+    if (username.isEmpty) { return setState(() { errorMessage = "invalid username"; }); }
+    if (email.isEmpty) { return setState(() { errorMessage = "invalid email"; }); }
+    if (password.isEmpty) { return setState(() { errorMessage = "invalid password"; }); }
+    if (password != confirmPassword) { return setState(() { errorMessage = "passwords do not match"; }); }
 
-    try { authCubit.register(username, email, password); }
-    catch (error) { errorMessage = error as String; }
+    try {
+      authCubit.register(username, email, password)
+      .catchError((message) {
+        setState(() { errorMessage = message; });
+      });
+    }
+    catch (error) { 
+      setState(() { errorMessage = "Error communicating with the server \nPlease try again"; });
+    }
   }
 
   @override
@@ -67,96 +75,99 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 25.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
 
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-
-              // logo
-              Icon(
-                Icons.lock_open,
-                size: 80,
+            // logo
+            Icon(
+              Icons.lock_open,
+              size: 80,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 25),
+        
+            // app name
+            Text(
+              "Stencil-AI",
+              style: TextStyle(
+                fontSize: 16,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 25),
-          
-              // app name
-              Text(
-                "Stencil-AI",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 25),
-          
-              // username textfield
-              CustomTextField(
-                controller: usernameController,
-                hintText: "Username",
-                obscureText: false,
-              ),
+            ),
+            const SizedBox(height: 25),
+        
+            // username textfield
+            CustomTextField(
+              controller: usernameController,
+              hintText: "Username",
+              obscureText: false,
+            ),
+            const SizedBox(height: 10),
+
+            // email textfield
+            CustomTextField(
+              controller: emailController,
+              hintText: "Email",
+              obscureText: false,
+            ),
+            const SizedBox(height: 10),
+
+            // password textfield
+            CustomTextField(
+              controller: passwordController,
+              hintText: "Password",
+              obscureText: true
+            ),
+            const SizedBox(height: 10),
+
+            CustomTextField(
+              controller: confirmPasswordController,
+              hintText: "Confirm Password",
+              obscureText: true
+            ),
+
+            // error box (only show if errorMessage exists)
+            if (errorMessage != null) ...[
               const SizedBox(height: 10),
-
-              // email textfield
-              CustomTextField(
-                controller: emailController,
-                hintText: "Email",
-                obscureText: false,
-              ),
-              const SizedBox(height: 10),
-
-              // password textfield
-              CustomTextField(
-                controller: passwordController,
-                hintText: "Password",
-                obscureText: true
-              ),
-              const SizedBox(height: 10),
-
-              CustomTextField(
-                controller: confirmPasswordController,
-                hintText: "Confirm Password",
-                obscureText: true
-              ),
-
-              const SizedBox(height: 25),
-
-              //register button
-              CustomButton(
-                onTap: register,
-                text: "Create Account"
-              ),
-
-              const SizedBox(height: 25),
-
-              // dont have an account option
-              Row(
-                children: [
-                  Text(
-                    "Already have an account?",
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: widget.togglePages,
-                    child: Text(
-                      " Login now",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      )
-                    ),
-                  )
-                ],
-              )
+              ErrorMessage(errorText: errorMessage!),
             ],
-          ),
+
+            const SizedBox(height: 25),
+
+            //register button
+            CustomButton(
+              onTap: register,
+              text: "Create Account"
+            ),
+
+            const SizedBox(height: 25),
+
+            // dont have an account option
+            Row(
+              children: [
+                Text(
+                  "Already have an account?",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant
+                  ),
+                ),
+                GestureDetector(
+                  onTap: widget.togglePages,
+                  child: Text(
+                    " Login now",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    )
+                  ),
+                )
+              ],
+            )
+          ],
         ),
-      )
+      ),
     );
   }
 }

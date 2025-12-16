@@ -142,7 +142,7 @@ export class OenoService {
 
                // redefine the path and url to where it is saved in the server
                image.path = "stencil/" + fileName;
-               image.url = "server/" + image.path;
+               image.url = "public/" + image.path;
 
                return image;
             }

@@ -53,6 +53,7 @@ class AuthCubit extends Cubit<AuthState> {
     }
     catch (error) {
       emit(AuthError(error.toString()));
+      rethrow;
     }
   }
 
@@ -76,6 +77,7 @@ class AuthCubit extends Cubit<AuthState> {
         stackTrace: stack
       );
       emit(AuthError(errorString));
+      rethrow;
     }
   }
 
