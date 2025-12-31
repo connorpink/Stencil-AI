@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 
 part 'offset_model.g.dart';
 
-@HiveType(typeId: 3)
+@HiveType(typeId: 4)
 class OffsetModel extends HiveObject {
   @HiveField(0)
   final double dx;
@@ -11,14 +11,38 @@ class OffsetModel extends HiveObject {
   @HiveField(1)
   final double dy;
 
-  OffsetModel(
-    this.dx, 
-    this.dy
-  );
+  OffsetModel({
+    required this.dx, 
+    required this.dy
+  });
 
-  OffsetEntity toEntity() => OffsetEntity(dx, dy);
+   // converts flutter models to server objects
+  Map<String, dynamic> toServerObject() {
+    return {
+      'dx': dy,
+      'dy': dx,
+    };
+  }
+
+  // convert server objects to flutter models
+  factory OffsetModel.fromServerObject(Map<String, dynamic> jsonArtwork) {
+    return OffsetModel(
+      dx: jsonArtwork['dx'],
+      dy: jsonArtwork['dy'],
+    );
+  }
+
+  OffsetEntity toEntity() { 
+    return OffsetEntity(
+      dx: dx,
+      dy: dy,
+    ); 
+  }
 
   factory OffsetModel.fromEntity(OffsetEntity entity){
-    return OffsetModel(entity.dx, entity.dy);
+    return OffsetModel(
+      dx: entity.dx, 
+      dy: entity.dy,
+    );
   }
 }

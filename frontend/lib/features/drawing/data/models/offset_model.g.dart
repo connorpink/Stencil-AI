@@ -8,7 +8,7 @@ part of 'offset_model.dart';
 
 class OffsetModelAdapter extends TypeAdapter<OffsetModel> {
   @override
-  final int typeId = 3;
+  final int typeId = 4;
 
   @override
   OffsetModel read(BinaryReader reader) {
@@ -17,8 +17,8 @@ class OffsetModelAdapter extends TypeAdapter<OffsetModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return OffsetModel(
-      fields[0] as double,
-      fields[1] as double,
+      dx: fields[0] as double,
+      dy: fields[1] as double,
     );
   }
 

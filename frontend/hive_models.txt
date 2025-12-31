@@ -13,11 +13,20 @@ StencilModel - typeId: 1
    String name
    Unit8List imageData
 
-StrokeModel - typeId: 2
+ImageModel - typeId: 2
+  String url;
+  int? size;
+  String? orig_name;
+  String? mime_type;
+  bool is_stream;
+  dynamic meta;
+  Uint8List? content;
+
+StrokeModel - typeId: 3
    List<OffsetModel> points
    int color
    double brushSize
 
-OffsetModel - typeId: 3
+OffsetModel - typeId: 4
    double dx
    double dy

@@ -12,7 +12,7 @@ NEGATIVE RESPONSE CODES
 final dio = Dio(BaseOptions(
   baseUrl: 'http://localhost:3000',
   connectTimeout: Duration(seconds: 10),
-  receiveTimeout: Duration(seconds: 5),
+  receiveTimeout: Duration(seconds: (60 * 60)), //! this is a 1 hour timeout for testing, only createArtwork in the drawing repo should need this much time before timeout
   headers: {'Content-Type': 'application/json'}
 ));
 
@@ -36,12 +36,12 @@ class ApiResponse<T> {
 extension DioApiExtension on Dio {
 
   Future<ApiResponse<T>> sendRequest<T>(
-    String method, 
-    String path,
+    String method, // request type being sent to the server
+    String path, // path to the server endpoint
     {
-      dynamic data,
-      Map<String, dynamic>? queryParameters,
-      T Function(Map<String, dynamic>)? fromJson,
+      dynamic data, // body fields that should be sent with the request
+      Map<String, dynamic>? queryParameters, // parameters that should be sent with the request
+      T Function(dynamic)? responseProcessor, // function that converts JSON responses from the server to the expected T variable types
     }
   ) async {
 
@@ -57,7 +57,9 @@ extension DioApiExtension on Dio {
       late final T returnedObject;
       try {
         // convert the returned object using the fromJson method if provided
-        if (fromJson != null) { returnedObject = fromJson(response.data); }
+        if (responseProcessor != null) {
+          returnedObject = responseProcessor(response.data); 
+        }
         else {
           appLogger.w('fromJson function was not provided, if you using an advanced interface please make sure to pass one');
           returnedObject = response.data as T;

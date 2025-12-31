@@ -1,21 +1,22 @@
+import 'package:flutter_frontend/features/auth/data/models/user_model.dart';
 import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
-import 'package:flutter_frontend/features/auth/domain/auth_repository_interface.dart';
+import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository_interface.dart';
 import 'package:flutter_frontend/services/logger.dart';
-import '../../../services/dio_client.dart';
+import '../../../../services/dio_client.dart';
 
 class AuthRepository implements AuthRepositoryInterface {
 
   @override
   Future<UserEntity?> loginWithUsernamePassword(String username, String password) async {
 
-    late final UserEntity? appUser;
+    late final UserModel? appUser;
     late final String responseMessage;
     try {
-      final response = await dio.sendRequest<UserEntity>(
+      final response = await dio.sendRequest<UserModel>(
         'POST', 
         '/auth/login', 
         data: {'username': username, 'password': password},
-        fromJson: UserEntity.fromJson
+        responseProcessor: (json) => UserModel.fromServerObject(json)
       );
       appUser = response.data;
       responseMessage = response.message;
@@ -29,21 +30,21 @@ class AuthRepository implements AuthRepositoryInterface {
       throw 'dio failed to catch exception';
     }
 
-    if (appUser != null) { return appUser; }
+    if (appUser != null) { return appUser.toEntity(); }
     else { throw responseMessage; }
   }
 
   @override
   Future<UserEntity?> registerWithUsernamePassword(String username, String email, String password) async {
 
-    late final UserEntity? appUser;
+    late final UserModel? appUser;
     late final String responseMessage;
     try {
-      final ApiResponse response = await dio.sendRequest<UserEntity>(
+      final ApiResponse response = await dio.sendRequest<UserModel>(
         'POST',
         '/auth/register', 
         data: {'username': username, 'email': email, 'password': password},
-        fromJson: UserEntity.fromJson
+        responseProcessor: (json) => UserModel.fromServerObject(json)
       );
       appUser = response.data;
       responseMessage = response.message;
@@ -57,7 +58,7 @@ class AuthRepository implements AuthRepositoryInterface {
       throw 'dio failed to catch exception';
     }
 
-    if (appUser != null) { return appUser; }
+    if (appUser != null) { return appUser.toEntity(); }
     else { throw responseMessage; }
   }
   

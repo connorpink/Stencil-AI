@@ -14,13 +14,14 @@ export type UserDto = {
    email?: string
 }
 
-// artwork dto
+// artwork dto start
 export type ArtworkDto = {
-   id: number;
+   id: string;
    title: string;
    prompt: string;
    stencilList: StencilDto[];
    strokeList: StrokeDto[];
+   updatedAt: Date;
 }
 
 export type StencilDto = {
@@ -38,3 +39,4 @@ type OffsetDto = {
    dx: number;
    dy: number;
 }
+// artwork dto end

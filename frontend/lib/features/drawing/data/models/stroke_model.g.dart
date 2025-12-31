@@ -8,7 +8,7 @@ part of 'stroke_model.dart';
 
 class StrokeModelAdapter extends TypeAdapter<StrokeModel> {
   @override
-  final int typeId = 2;
+  final int typeId = 3;
 
   @override
   StrokeModel read(BinaryReader reader) {

@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter_frontend/features/drawing/data/datasources/artwork_local_datasource.dart';
+import 'package:flutter_frontend/features/drawing/data/models/stencil_model.dart';
+import 'package:flutter_frontend/features/drawing/domain/entities/artwork_entity.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/waiting_room_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'features/drawing/data/models/stroke_model.dart';
 import 'package:go_router/go_router.dart';
@@ -7,13 +10,13 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_frontend/features/drawing/data/models/artwork_model.dart';
-import 'package:flutter_frontend/features/drawing/data/models/stencil_model.dart';
+import 'package:flutter_frontend/features/drawing/data/models/image_model.dart';
 import 'package:flutter_frontend/features/drawing/data/repositories/artwork_repository_logic.dart';
 import 'package:flutter_frontend/features/drawing/domain/repositories/artwork_repository_interface.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/prompt_screen.dart';
-import 'package:flutter_frontend/features/auth/data/auth_repository.dart';
+import 'package:flutter_frontend/features/auth/data/repositories/auth_repository.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
-import 'package:flutter_frontend/features/auth/presentation/cubits/auth_states.dart';
+import 'package:flutter_frontend/features/auth/presentation/cubits/auth_state.dart';
 import 'package:flutter_frontend/features/auth/presentation/screens/auth_screen.dart';
 import 'package:flutter_frontend/features/drawing/data/models/offset_model.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen.dart';
@@ -32,6 +35,7 @@ void main() async {
   // Register the adapters
   Hive.registerAdapter(ArtworkModelAdapter());
   Hive.registerAdapter(StencilModelAdapter());
+  Hive.registerAdapter(ImageModelAdapter());
   Hive.registerAdapter(StrokeModelAdapter());
   Hive.registerAdapter(OffsetModelAdapter());
 
@@ -92,23 +96,45 @@ class _MainAppState extends State<MainApp> {
       routes: [
         GoRoute(
           path: '/home',
-          builder: (context, state) { return const HomeScreen(); }
+          builder: (context, state) { 
+            return HomeScreen(
+              artworkRepository: context.read<ArtworkRepositoryInterface>(),
+            );
+          }
         ),
         GoRoute(
           path: '/createPrompt',
-          builder: (context, state) { return const PromptScreen(); }
+          builder: (context, state) {
+            return PromptScreen(
+              artworkRepository: context.read<ArtworkRepositoryInterface>(),
+            );
+          }
         ),
         GoRoute(
           path: '/draw',
           builder: (context, state) { 
-            final id = state.extra as String?;
-            return DrawScreen(id: id);
+            final artwork = state.extra as ArtworkEntity;
+            return DrawScreen(
+              artwork: artwork,
+              artworkRepository: context.read<ArtworkRepositoryInterface>(),
+            );
           }
         ),
         GoRoute(
           path: '/auth',  
-          builder: (context, state) { return const AuthScreen(); }
+          builder: (context, state) { 
+            return const AuthScreen();
+          }
         ),
+        GoRoute(
+          path: '/waitingRoom',
+          builder: (context, state) {
+            final artworkPromise = state.extra as Future<ArtworkEntity>;
+            return WaitingRoomScreen(
+              artworkPromise: artworkPromise
+            );
+          }
+        )
       ],
 
       redirect: (context, state) {

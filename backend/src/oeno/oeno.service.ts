@@ -92,7 +92,7 @@ export class OenoService {
          prompt: prompt,
          model_type: "Checkpoint-1000",
          negative_prompt: "",
-         num_images: 4,
+         num_images: 2,
          num_inference_steps: 25,
          guidance_scale: 7.5,
          width: 512,
@@ -103,12 +103,15 @@ export class OenoService {
          clean_background: true,
       }
 
+      // ! commented out the section of code that calls Oeno for testing, will correct later
       let oenoImageList: OenoImageDto[];
       try {
+         console.log("generating stencil: " + prompt);
          // generate images using oeno
          const result = await this.gradioClient.predict("/generate_stencil", payload);
          const [oenoResponse, status] = result.data as [OenoImageDto[], string];
          oenoImageList = oenoResponse;
+         console.log("stencils generated: " + prompt);
       }
       catch (error) {
          throw new Error("\x1b[31m[OenoService] server failed to collect stencils form Oeno\x1b[0m\n" + error)

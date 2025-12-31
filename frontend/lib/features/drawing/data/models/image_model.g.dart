@@ -1,50 +1,53 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'artwork_model.dart';
+part of 'image_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class ArtworkModelAdapter extends TypeAdapter<ArtworkModel> {
+class ImageModelAdapter extends TypeAdapter<ImageModel> {
   @override
-  final int typeId = 0;
+  final int typeId = 2;
 
   @override
-  ArtworkModel read(BinaryReader reader) {
+  ImageModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return ArtworkModel(
-      id: fields[0] as String,
-      serverId: fields[1] as String?,
-      title: fields[2] as String,
-      prompt: fields[3] as String,
-      stencilList: (fields[4] as List).cast<StencilModel>(),
-      strokeList: (fields[5] as List).cast<StrokeModel>(),
-      updatedAt: fields[6] as DateTime,
+    return ImageModel(
+      path: fields[0] as String,
+      url: fields[1] as String,
+      size: fields[2] as int?,
+      orig_name: fields[3] as String?,
+      mime_type: fields[4] as String?,
+      is_stream: fields[5] as bool,
+      meta: fields[6] as dynamic,
+      content: fields[7] as Uint8List?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, ArtworkModel obj) {
+  void write(BinaryWriter writer, ImageModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
-      ..write(obj.id)
+      ..write(obj.path)
       ..writeByte(1)
-      ..write(obj.serverId)
+      ..write(obj.url)
       ..writeByte(2)
-      ..write(obj.title)
+      ..write(obj.size)
       ..writeByte(3)
-      ..write(obj.prompt)
+      ..write(obj.orig_name)
       ..writeByte(4)
-      ..write(obj.stencilList)
+      ..write(obj.mime_type)
       ..writeByte(5)
-      ..write(obj.strokeList)
+      ..write(obj.is_stream)
       ..writeByte(6)
-      ..write(obj.updatedAt);
+      ..write(obj.meta)
+      ..writeByte(7)
+      ..write(obj.content);
   }
 
   @override
@@ -53,7 +56,7 @@ class ArtworkModelAdapter extends TypeAdapter<ArtworkModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ArtworkModelAdapter &&
+      other is ImageModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

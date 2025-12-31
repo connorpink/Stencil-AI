@@ -1,9 +1,11 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
-
+import { Prop, Schema, SchemaFactory, Virtual } from "@nestjs/mongoose";
+import { HydratedDocument } from "mongoose";
 
 @Schema ({ timestamps: true })
-export class Artwork extends Document {
+export class Artwork {
+   @Virtual()
+   id: string;
+
    @Prop({ required: true })
    title: string;
 
@@ -32,26 +34,19 @@ export class Artwork extends Document {
       }[];
       color: number;
       brushSize: number;
-   }
+   }[]
+
+   @Prop({ type: Date, default: Date.now })
+   updatedAt: Date;
 }
 
+export type ArtworkDocument = HydratedDocument<Artwork>;
 export const ArtworkSchema = SchemaFactory.createForClass(Artwork);
 
 // set returned values from mongoDB to use id instead of _id (for uniformity with postgres)
-ArtworkSchema.set('toJSON', {
-   virtuals: true,
-   versionKey: false,
-   transform: function (doc, ret: any) {
-      ret.id = ret._id;
-      delete ret._id;
-   },
+ArtworkSchema.virtual('id').get(function(){
+   return this._id.toHexString();
 });
 
-ArtworkSchema.set('toObject', {
-   virtuals: true,
-   versionKey: false,
-   transform: function (doc, ret: any) {
-      ret.id = ret._id;
-      delete ret._id;
-   }
-});
+ArtworkSchema.set('toJSON', { virtuals: true });
+ArtworkSchema.set('toObject', { virtuals: true });

@@ -1,4 +1,4 @@
-import 'entities/user_entity.dart';
+import '../entities/user_entity.dart';
 
 abstract class AuthRepositoryInterface {
   Future<UserEntity?> loginWithUsernamePassword(String username, String password);

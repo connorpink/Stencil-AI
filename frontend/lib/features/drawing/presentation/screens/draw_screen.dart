@@ -1,4 +1,3 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_frontend/features/drawing/domain/entities/artwork_entity.dart';
 import 'package:flutter_frontend/features/drawing/domain/repositories/artwork_repository_interface.dart';
 import 'package:flutter/material.dart';
@@ -6,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/features/drawing/domain/entities/stroke_entity.dart';
 
 class DrawScreen extends StatefulWidget {
-  final String? id;
+  final ArtworkEntity artwork;
+  final ArtworkRepositoryInterface artworkRepository;
 
   const DrawScreen({
     super.key,
-    this.id,
+    required this.artwork,
+    required this.artworkRepository,
   });
 
   @override
@@ -18,17 +19,9 @@ class DrawScreen extends StatefulWidget {
 }
 
 class _DrawScreenState extends State<DrawScreen> {
-
+  
   late ArtworkEntity _artwork;
   late ArtworkRepositoryInterface _artworkRepository;
-
-  // basic default artwork entity if a valid one doesn't already exist
-  ArtworkEntity freshArtworkEntity = ArtworkEntity(
-    title: "New Artwork",
-    description: "none",
-    stencilList: [],
-    strokeList: []
-  );
 
   // stroke variables
     // current strokes can be found in artwork.strokeList
@@ -42,9 +35,8 @@ class _DrawScreenState extends State<DrawScreen> {
   @override
   void initState() {
     super.initState();
-    _artworkRepository = context.read<ArtworkRepositoryInterface>();
-    if (widget.id == null) { _artwork = freshArtworkEntity; }
-    else { _artwork = _artworkRepository.fetchArtwork(widget.id!) ?? freshArtworkEntity; }
+    _artwork = widget.artwork;
+    _artworkRepository = widget.artworkRepository;
   }
 
   Future<void> _saveDrawing(String title) async {

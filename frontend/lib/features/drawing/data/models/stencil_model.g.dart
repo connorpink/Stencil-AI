@@ -17,8 +17,8 @@ class StencilModelAdapter extends TypeAdapter<StencilModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return StencilModel(
-      name: fields[0] as String,
-      imageData: fields[1] as Uint8List,
+      prompt: fields[0] as String,
+      imageList: (fields[1] as List).cast<ImageModel>(),
     );
   }
 
@@ -27,9 +27,9 @@ class StencilModelAdapter extends TypeAdapter<StencilModel> {
     writer
       ..writeByte(2)
       ..writeByte(0)
-      ..write(obj.name)
+      ..write(obj.prompt)
       ..writeByte(1)
-      ..write(obj.imageData);
+      ..write(obj.imageList);
   }
 
   @override

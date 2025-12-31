@@ -3,26 +3,37 @@ basic screen that lets the user write a prompt that the Oeno will use to create 
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/features/drawing/domain/entities/artwork_entity.dart';
+import 'package:flutter_frontend/features/drawing/domain/repositories/artwork_repository_interface.dart';
 import 'package:go_router/go_router.dart';
 
 class PromptScreen extends StatefulWidget {
-  const PromptScreen ({super.key});
+  final ArtworkRepositoryInterface artworkRepository;
 
-  @override 
+  const PromptScreen ({
+    super.key,
+    required this.artworkRepository,
+  });
+
+  @override
   State<PromptScreen> createState() => _PromptScreenState();
 }
 
 class _PromptScreenState extends State<PromptScreen> {
+
+  late final ArtworkRepositoryInterface _artworkRepository;
 
   final promptController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _artworkRepository = widget.artworkRepository;
   }
 
-  void _createProject(String prompt) async {
-    context.replace('/draw');
+  void _createProject(String prompt) {
+    final Future<ArtworkEntity> artworkPromise = _artworkRepository.createArtwork(prompt);
+    context.replace('/waitingRoom', extra: artworkPromise);
   }
 
   @override

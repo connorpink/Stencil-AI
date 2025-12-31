@@ -8,8 +8,12 @@ import 'package:flutter_frontend/features/drawing/presentation/widgets/thumbnail
 import 'package:go_router/go_router.dart';
 
 class HomeScreen extends StatelessWidget {
+  final ArtworkRepositoryInterface artworkRepository;
 
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    required this.artworkRepository,
+  });
   
   @override
   Widget build(BuildContext context) {
@@ -25,7 +29,7 @@ class HomeScreen extends StatelessWidget {
           )
         ],
       ),
-      body: _DrawingCollection(),
+      body: _DrawingCollection(artworkRepository: artworkRepository),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           context.push('/createPrompt');
@@ -38,6 +42,11 @@ class HomeScreen extends StatelessWidget {
 
 
 class _DrawingCollection extends StatefulWidget {
+  final ArtworkRepositoryInterface artworkRepository;
+
+  const _DrawingCollection({
+    required this.artworkRepository,
+  });
 
   @override
   State<_DrawingCollection> createState() => _DrawingCollectionState();
@@ -46,24 +55,25 @@ class _DrawingCollection extends StatefulWidget {
 // Widget for displaying a collection of drawings in a dynamic grid layout
 class _DrawingCollectionState extends State<_DrawingCollection> {
 
-  late ArtworkRepositoryInterface _artworkRepository;
+  late final ArtworkRepositoryInterface _artworkRepository;
 
   @override
   void initState() { 
     super.initState();
-    _artworkRepository = context.read<ArtworkRepositoryInterface>();    
+    _artworkRepository = widget.artworkRepository;  
   }
 
   void _openDrawing(String id) async {
-    context.push('/draw', extra: id);
+    final Future<ArtworkEntity> artworkPromise =  _artworkRepository.fetchArtwork(id);
+    context.push('/waitingRoom', extra: artworkPromise);
   }
 
-  void _deleteDrawing(String name) async {
+  void _deleteDrawing(ArtworkEntity artwork) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Delete Drawing"),
-        content: Text('Are you sure you want to delete $name'),
+        content: Text('Are you sure you want to delete ${artwork.title}'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
@@ -72,10 +82,10 @@ class _DrawingCollectionState extends State<_DrawingCollection> {
     );
 
     if (confirm == true) {
-      await _artworkRepository.deleteArtwork(name);
+      _artworkRepository.deleteArtwork(artwork);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Drawing $name deleted!'))
+          SnackBar(content: Text('Drawing ${artwork.title} deleted!'))
         );
       }
     }
@@ -84,23 +94,24 @@ class _DrawingCollectionState extends State<_DrawingCollection> {
   @override
   Widget build(BuildContext context) {
 
-    // listen for changes inside hive and rebuild the drawing gallery when changes happen
+    // Listen for changes inside hive and rebuild the drawing gallery when changes happen
     return AnimatedBuilder(
       animation: _artworkRepository.listenable,
-
-      // build the drawing gallery
       builder: (context, staticChild) {
-        final artworkList = _artworkRepository.fetchAllArtworks();
 
-        // return default text if no drawings exist
-        if (artworkList.isEmpty) { return const Center(child: Text('No drawings yet')); }
+        final List<ArtworkEntity> artworkList = _artworkRepository.fetchAllArtworks();
 
-        // calculate the size of each thumbnail
+        // Handle empty state
+        if (artworkList.isEmpty) {
+          return const Center(child: Text('No drawings yet'));
+        }
+
+        // Calculate thumbnail size
         final screenWidth = MediaQuery.of(context).size.width;
         final cardWidth = (screenWidth / 2) - 16;
         final thumbnailSize = (cardWidth * 2).toInt();
         
-        // else return a grid of all items inside the hive box (gallery)
+        // Build the art gallery grid
         return GridView.builder(
           padding: const EdgeInsets.all(8),
 
@@ -133,7 +144,7 @@ class _DrawingCollectionState extends State<_DrawingCollection> {
                   top: 4,
                   right: 4,
                   child: IconButton(
-                    onPressed: () { _deleteDrawing.call(artwork.id); },
+                    onPressed: () { _deleteDrawing.call(artwork); },
                     icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.primary),
                   )
                 ),
@@ -142,7 +153,7 @@ class _DrawingCollectionState extends State<_DrawingCollection> {
             );
           }
         );
-      },
+      }
     );
   }
 }

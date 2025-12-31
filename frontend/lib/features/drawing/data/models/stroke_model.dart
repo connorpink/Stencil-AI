@@ -5,7 +5,7 @@ import 'offset_model.dart';
 
 part 'stroke_model.g.dart';
 
-@HiveType(typeId: 2)
+@HiveType(typeId: 3)
 class StrokeModel extends HiveObject{
   @HiveField(0)
   final List<OffsetModel> points;
@@ -21,6 +21,24 @@ class StrokeModel extends HiveObject{
     required this.color,
     required this.brushSize,
   });
+
+  // converts flutter models to server objects
+  Map<String, dynamic> toServerObject() {
+    return {
+      'points': points.map((point) => point.toServerObject()).toList(),
+      'color': color,
+      'brushSize': brushSize,
+    };
+  }
+  
+  // converts server objects to flutter models
+  factory StrokeModel.fromServerObject(Map<String, dynamic> jsonStencil) {
+    return StrokeModel(
+      points: jsonStencil['points'].map((point) => OffsetModel.fromServerObject(point)).toList(),
+      color: jsonStencil['color'],
+      brushSize: jsonStencil['brushSize'],
+    );
+  }
 
   StrokeEntity toEntity() {
     return StrokeEntity(
