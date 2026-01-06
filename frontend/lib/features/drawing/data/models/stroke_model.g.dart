@@ -17,7 +17,9 @@ class StrokeModelAdapter extends TypeAdapter<StrokeModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return StrokeModel(
-      points: (fields[0] as List).cast<OffsetModel>(),
+      pointList: (fields[0] as List)
+          .map((dynamic e) => (e as List).cast<double>())
+          .toList(),
       color: fields[1] as int,
       brushSize: fields[2] as double,
     );
@@ -28,7 +30,7 @@ class StrokeModelAdapter extends TypeAdapter<StrokeModel> {
     writer
       ..writeByte(3)
       ..writeByte(0)
-      ..write(obj.points)
+      ..write(obj.pointList)
       ..writeByte(1)
       ..write(obj.color)
       ..writeByte(2)

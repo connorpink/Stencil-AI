@@ -1,3 +1,5 @@
+Update with: flutter packages pub run build_runner build
+
 Hive is the client side database for saving the users drawings
 These are the models being saved inside hive
 
@@ -23,10 +25,6 @@ ImageModel - typeId: 2
   Uint8List? content;
 
 StrokeModel - typeId: 3
-   List<OffsetModel> points
+   List<List<double>> points
    int color
    double brushSize
-
-OffsetModel - typeId: 4
-   double dx
-   double dy

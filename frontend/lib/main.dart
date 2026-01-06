@@ -18,7 +18,6 @@ import 'package:flutter_frontend/features/auth/data/repositories/auth_repository
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter_frontend/features/auth/presentation/cubits/auth_state.dart';
 import 'package:flutter_frontend/features/auth/presentation/screens/auth_screen.dart';
-import 'package:flutter_frontend/features/drawing/data/models/offset_model.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/home_screen.dart';
 import 'package:flutter_frontend/shared/splash_screen.dart';
@@ -37,8 +36,7 @@ void main() async {
   Hive.registerAdapter(StencilModelAdapter());
   Hive.registerAdapter(ImageModelAdapter());
   Hive.registerAdapter(StrokeModelAdapter());
-  Hive.registerAdapter(OffsetModelAdapter());
-
+  
   // open hive
   await Hive.openBox<ArtworkModel>('artwork');
 

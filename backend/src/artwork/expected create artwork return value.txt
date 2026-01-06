@@ -1,0 +1,93 @@
+{
+	title: new artwork, 
+	prompt: A knight fighting a dragon, 
+	stencilList: [
+		{
+			prompt: Knight - swinging a sword, 
+			imageList: [
+				{
+					path: stencil/oenoImage-1767125791021.webp, 
+					url: public/stencil/oenoImage-1767125791021.webp, 
+					size: null, 
+					orig_name: null, 
+					mime_type: null, 
+					is_stream: false, 
+					meta: {
+						_type: gradio.FileData
+					}
+				}, 
+				{
+					path: stencil/oenoImage-1767125791031.webp, 
+					url: public/stencil/oenoImage-1767125791031.webp, 
+					size: null, 
+					orig_name: null, 
+					mime_type: null, 
+					is_stream: false, 
+					meta: {
+						_type: gradio.FileData
+					}
+				}
+			]
+		}, 
+		{
+			prompt: Dragon - spreading wings, 
+			imageList: [
+				{
+					path: stencil/oenoImage-1767126425090.webp, 
+					url: public/stencil/oenoImage-1767126425090.webp, 
+					size: null, 
+					orig_name: null, 
+					mime_type: null, 
+					is_stream: false, 
+					meta: {
+						_type: gradio.FileData
+					}
+				}, 
+				{
+					path: stencil/oenoImage-1767126425221.webp, 
+					url: public/stencil/oenoImage-1767126425221.webp, 
+					size: null, 
+					orig_name: null, 
+					mime_type: null, 
+					is_stream: false, 
+					meta: {
+						_type: gradio.FileData
+					}
+				}
+			]
+		}, 
+		{
+			prompt: Knight - holding a shield, 
+			imageList: [
+				{
+					path: stencil/oenoImage-1767125142078.webp, 
+					url: public/stencil/oenoImage-1767125142078.webp, 
+					size: null, 
+					orig_name: null, 
+					mime_type: null, 
+					is_stream: false, 
+					meta: {
+						_type: gradio.FileData
+					}
+				}, 
+				{
+					path: stencil/oenoImage-1767125142145.webp, 
+					url: public/stencil/oenoImage-1767125142145.webp, 
+					size: null, 
+					orig_name: null, 
+					mime_type: null, 
+					is_stream: false, 
+					meta: {
+						_type: gradio.FileData
+					}
+				}
+			]
+		}
+	], 
+	strokeList: [], 
+	updatedAt: 2025-12-30T20:27:05.261Z, 
+	_id: 695435995e042cd805b0e06a, 
+	createdAt: 2025-12-30T20:27:05.261Z, 
+	__v: 0, 
+	id: 695435995e042cd805b0e06a
+}

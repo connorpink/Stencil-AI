@@ -1,14 +1,13 @@
 import 'dart:ui';
 import 'package:flutter_frontend/features/drawing/domain/entities/stroke_entity.dart';
 import 'package:hive/hive.dart';
-import 'offset_model.dart';
 
 part 'stroke_model.g.dart';
 
 @HiveType(typeId: 3)
 class StrokeModel extends HiveObject{
   @HiveField(0)
-  final List<OffsetModel> points;
+  final List<List<double>> pointList; // List of points, points are a list of 2 doubles representing grid coordinates [x, y]
 
   @HiveField(1)
   final int color;
@@ -17,7 +16,7 @@ class StrokeModel extends HiveObject{
   final double brushSize;
 
   StrokeModel({
-    required this.points,
+    required this.pointList,
     required this.color,
     required this.brushSize,
   });
@@ -25,7 +24,7 @@ class StrokeModel extends HiveObject{
   // converts flutter models to server objects
   Map<String, dynamic> toServerObject() {
     return {
-      'points': points.map((point) => point.toServerObject()).toList(),
+      'pointList': pointList,
       'color': color,
       'brushSize': brushSize,
     };
@@ -34,15 +33,19 @@ class StrokeModel extends HiveObject{
   // converts server objects to flutter models
   factory StrokeModel.fromServerObject(Map<String, dynamic> jsonStencil) {
     return StrokeModel(
-      points: jsonStencil['points'].map((point) => OffsetModel.fromServerObject(point)).toList(),
-      color: jsonStencil['color'],
-      brushSize: jsonStencil['brushSize'],
+      pointList: (jsonStencil['pointList'] as List<dynamic>).map((point) { 
+        return <double>[point[0].toDouble(), point[1].toDouble()]; 
+      }).toList(),
+      color: jsonStencil['color'] as int,
+      brushSize: (jsonStencil['brushSize'] as num).toDouble(),
     );
   }
 
   StrokeEntity toEntity() {
     return StrokeEntity(
-      points: points.map((p) => p.toEntity()).toList(), 
+      pointList: pointList.map((point) { 
+        return Offset(point[0], point[1]); 
+      }).toList(),
       color: Color(color),
       brushSize: brushSize,
     );
@@ -50,7 +53,9 @@ class StrokeModel extends HiveObject{
 
   factory StrokeModel.fromEntity(StrokeEntity entity) {
     return StrokeModel(
-      points: entity.points.map((p) => OffsetModel.fromEntity(p)).toList(),
+      pointList: entity.pointList.map((point) {
+        return [point.dx, point.dy];
+      }).toList(),
       color: entity.color.toARGB32(),
       brushSize: entity.brushSize,
     );

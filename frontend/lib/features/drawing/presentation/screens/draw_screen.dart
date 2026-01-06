@@ -3,6 +3,7 @@ import 'package:flutter_frontend/features/drawing/domain/repositories/artwork_re
 import 'package:flutter/material.dart';
 
 import 'package:flutter_frontend/features/drawing/domain/entities/stroke_entity.dart';
+import 'package:flutter_frontend/features/drawing/presentation/widgets/drawing_canvas.dart';
 
 class DrawScreen extends StatefulWidget {
   final ArtworkEntity artwork;
@@ -19,68 +20,76 @@ class DrawScreen extends StatefulWidget {
 }
 
 class _DrawScreenState extends State<DrawScreen> {
-  
-  late ArtworkEntity _artwork;
-  late ArtworkRepositoryInterface _artworkRepository;
 
   // stroke variables
-    // current strokes can be found in artwork.strokeList
-  List<StrokeEntity> _redoStrokes = [];
-  List<Offset> _currentPoints = [];
+  List<StrokeEntity> _redoStrokeList = [];
+  List<StrokeEntity> _activeStrokeList = []; 
 
-  // brush settings
-  Color _selectedColor = Colors.black;
-  double _brushSize = 4.0;
+  Color _currentStrokeColor = Colors.black;
+  double _currentStrokeBrushSize = 4.0;
 
   @override
   void initState() {
     super.initState();
-    _artwork = widget.artwork;
-    _artworkRepository = widget.artworkRepository;
+    _activeStrokeList = widget.artwork.strokeList;
   }
 
   Future<void> _saveDrawing(String title) async {
-    _artworkRepository.saveArtwork(_artwork);
+    widget.artwork.strokeList = _activeStrokeList;
+    widget.artworkRepository.saveArtwork(widget.artwork);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Drawing $title saved!'))
     );
   }
 
-  // Popup for when the user tries to save there drawing
+  // Popup for when the user tries to save the drawing
   void _showSaveDialog() {
     final TextEditingController controller = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) {
+
         return AlertDialog(
           title: const Text("Save Drawing"),
+
           content: TextField(
             controller: controller,
             decoration: const InputDecoration(hintText: 'Enter drawing name'),
           ),
+
           actions: [
-            TextButton(onPressed: (){
-              Navigator.of(context).pop();
-            }, 
-            child: Text('Cancel')
-            ),
-            TextButton(onPressed: (){
-              final newTitle = controller.text.trim();
-              if(newTitle.isNotEmpty){
-                setState(() {
-                  _artwork.title = newTitle;
-                });
-                _saveDrawing(newTitle);
+            TextButton(
+              onPressed: (){ 
                 Navigator.of(context).pop();
-              }
-            }, 
-            child: Text('Save')
+              },
+              child: Text('Cancel')
+            ),
+            TextButton(
+              onPressed: () {
+                final newTitle = controller.text.trim();
+                if(newTitle.isNotEmpty){
+                  setState(() {
+                    widget.artwork.title = newTitle;
+                  });
+                  _saveDrawing(newTitle);
+                  Navigator.of(context).pop();
+                }
+              }, 
+
+              child: Text('Save')
             )
           ],
         );
+
       }
     );
+
+  }
+
+  void _handleNewStroke(StrokeEntity newStroke) {
+    setState(() { _activeStrokeList.add(newStroke); });
   }
 
   @override
@@ -88,64 +97,39 @@ class _DrawScreenState extends State<DrawScreen> {
     super.dispose();
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_artwork.title)
+        title: Text(widget.artwork.title)
       ),
-
       body: Column(
         children: [
           Expanded(
             child: Scaffold(
-              body: GestureDetector(
-                onPanStart: (details) {
-                  setState(() {
-                    _currentPoints = [details.localPosition];
-                  });
-                },
-                onPanUpdate: (details) {
-                  setState(() {
-                    _currentPoints.add(details.localPosition);
-                  });
-                },
-                onPanEnd: (details) {
-                  setState(() {
-                    _artwork.strokeList.add(
-                      StrokeEntity.fromOffset(
-                        offsets: List<Offset>.of(_currentPoints), 
-                        color: _selectedColor,
-                        brushSize: _brushSize
-                      ),
-                    );
-                    _currentPoints = [];
-                    _redoStrokes = [];
-                  });
-                },
-                child: CustomPaint(
-                  painter: DrawPainter(
-                    strokes: _artwork.strokeList,
-                    currentPoints: _currentPoints,
-                    currentColor: _selectedColor,
-                    currentBrushSize: _brushSize
-                  ),
-                  size: Size.infinite
-                ),
+              body: DrawingCanvas(
+                strokeList: _activeStrokeList,
+                currentStrokeColor: _currentStrokeColor,
+                currentStrokeBrushSize: _currentStrokeBrushSize, 
+                handleNewStroke: _handleNewStroke,
               ),
               floatingActionButton: FloatingActionButton(
                 onPressed: _showSaveDialog,
                 child: const Icon(Icons.save)
               ),
             ),
-        ),
-          _buildToolBar(),
+          ),
+          _drawingSettingsBar(),
         ]
       ),
     );
   }
 
-  Widget _buildToolBar(){
+
+
+  Widget _drawingSettingsBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: Colors.grey[200],
@@ -153,24 +137,25 @@ class _DrawScreenState extends State<DrawScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            onPressed: _artwork.strokeList.isNotEmpty ? () {
+            onPressed: _activeStrokeList.isNotEmpty ? () {
               setState(() {
-                _redoStrokes.add(_artwork.strokeList.removeLast());
+                _redoStrokeList.add(_activeStrokeList.removeLast());
               });
             } : null,
             icon: const Icon(Icons.undo)
           ),
+
           IconButton(
-            onPressed: _redoStrokes.isNotEmpty ? () {
+            onPressed: _redoStrokeList.isNotEmpty ? () {
               setState(() {
-                _artwork.strokeList.add(_redoStrokes.removeLast());
+                _activeStrokeList.add(_redoStrokeList.removeLast());
               });
             } : null,
             icon: const Icon(Icons.redo)
           ),
 
           DropdownButton(
-            value: _brushSize,
+            value: _currentStrokeBrushSize,
             items: [
               DropdownMenuItem(
                 value: 2.0,
@@ -187,17 +172,17 @@ class _DrawScreenState extends State<DrawScreen> {
             ],
             onChanged: (value) {
               setState(() {
-                _brushSize = value!;
+                _currentStrokeBrushSize = value!;
               });
             }
           ),
 
           Row(
             children: [
-              _buildColorButton(Colors.black),
-              _buildColorButton(Colors.red),
-              _buildColorButton(Colors.blue),
-              _buildColorButton(Colors.green),
+              _selectColorButton(Colors.black),
+              _selectColorButton(Colors.red),
+              _selectColorButton(Colors.blue),
+              _selectColorButton(Colors.green),
             ],
           )
         ],
@@ -205,11 +190,13 @@ class _DrawScreenState extends State<DrawScreen> {
     );
   }
 
-  Widget _buildColorButton(Color color) {
+
+
+  Widget _selectColorButton(Color color) {
     return GestureDetector(
       onTap: (){
         setState(() {
-          _selectedColor = color;
+          _currentStrokeColor = color;
         });
       },
       child: Container(
@@ -220,52 +207,10 @@ class _DrawScreenState extends State<DrawScreen> {
           color: color,
           shape: BoxShape.circle,
           border: Border.all(
-            color: _selectedColor == color ? Colors.grey : Colors.transparent
+            color: _currentStrokeColor == color ? Colors.grey : Colors.transparent
           )
         )
       )
     );
-  }
-}
-
-class DrawPainter extends CustomPainter {
-  final List<StrokeEntity> strokes;
-  final List<Offset> currentPoints;
-  final Color currentColor;
-  final double currentBrushSize;
-
-  DrawPainter({super.repaint, required this.strokes, required this.currentPoints, required this.currentColor, required this.currentBrushSize});
-  
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (final stroke in strokes) {
-      final paint = Paint()
-        ..color = stroke.color
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = stroke.brushSize;
-
-      final points = stroke.offsetPoints;
-      for(int i=0; i < stroke.points.length-1; i++) {
-        if(points[i] != Offset.zero && points[i+1] != Offset.zero){
-          canvas.drawLine(points[i], points[i+1], paint);
-        }
-      }
-    }
-
-    final paint = Paint()
-      ..color = currentColor
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = currentBrushSize;
-    
-    for(int i=0; i < currentPoints.length-1; i++) {
-      if(currentPoints[i] != Offset.zero && currentPoints[i+1] != Offset.zero){
-        canvas.drawLine(currentPoints[i], currentPoints[i+1], paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
   }
 }
