@@ -77,8 +77,15 @@ class _MainAppState extends State<MainApp> {
 
     // configure hive while the splash screen plays
     artworkBox = Hive.box<ArtworkModel>('artwork');
-    await authCubit.checkAuth();
-    await Future.delayed(const Duration(seconds: 6));
+
+    final fetchUser = authCubit.checkAuth();
+    final defaultWait = Future.delayed(const Duration(seconds: 6));
+
+    // wait for both benchmarks to be reached
+    await Future.wait([
+      fetchUser,
+      defaultWait
+    ]);
     
     // create the router
     setState(() {
