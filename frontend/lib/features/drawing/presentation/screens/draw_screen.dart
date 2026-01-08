@@ -92,6 +92,10 @@ class _DrawScreenState extends State<DrawScreen> {
     setState(() { _activeStrokeList.add(newStroke); });
   }
 
+  void _handleNewColor(Color newColor) {
+    setState(() { _currentStrokeColor = newColor; });
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -121,96 +125,114 @@ class _DrawScreenState extends State<DrawScreen> {
               ),
             ),
           ),
-          _drawingSettingsBar(),
+
+          // ------------ SETTINGS PANEL START ------------
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.grey[200],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: _activeStrokeList.isNotEmpty ? () {
+                    setState(() { _redoStrokeList.add(_activeStrokeList.removeLast()); });
+                  } : null,
+                  icon: const Icon(Icons.undo)
+                ),
+
+                IconButton(
+                  onPressed: _redoStrokeList.isNotEmpty ? () {
+                    setState(() { _activeStrokeList.add(_redoStrokeList.removeLast()); });
+                  } : null,
+                  icon: const Icon(Icons.redo)
+                ),
+
+                DropdownButton(
+                  value: _currentStrokeBrushSize,
+                  items: [
+                    DropdownMenuItem(
+                      value: 2.0,
+                      child: Text('small')
+                    ),
+                    DropdownMenuItem(
+                      value: 4.0,
+                      child: Text('medium')
+                    ),
+                    DropdownMenuItem(
+                      value: 8.0,
+                      child: Text('large')
+                    )
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _currentStrokeBrushSize = value!;
+                    });
+                  }
+                ),
+
+                Row(
+                  children: [
+                    _SelectColorButton(
+                      color: Colors.black,
+                      currentlySelected: (Colors.black == _currentStrokeColor),
+                      handleColorSelected: _handleNewColor
+                    ),
+                    _SelectColorButton(
+                      color: Colors.red,
+                      currentlySelected: (Colors.red == _currentStrokeColor),
+                      handleColorSelected: _handleNewColor
+                    ),
+                    _SelectColorButton(
+                      color: Colors.blue,
+                      currentlySelected: (Colors.blue == _currentStrokeColor),
+                      handleColorSelected: _handleNewColor
+                    ),
+                    _SelectColorButton(
+                      color: Colors.green,
+                      currentlySelected: (Colors.green == _currentStrokeColor),
+                      handleColorSelected: _handleNewColor
+                    ),
+                  ],
+                )
+              ],
+            )
+          )
         ]
       ),
+      // ------------ SETTINGS PANEL END ------------
     );
   }
+}
 
 
 
-  Widget _drawingSettingsBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.grey[200],
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            onPressed: _activeStrokeList.isNotEmpty ? () {
-              setState(() {
-                _redoStrokeList.add(_activeStrokeList.removeLast());
-              });
-            } : null,
-            icon: const Icon(Icons.undo)
-          ),
+class _SelectColorButton extends StatelessWidget {
+  final Color color;
+  final bool currentlySelected;
+  final void Function(Color) handleColorSelected;
 
-          IconButton(
-            onPressed: _redoStrokeList.isNotEmpty ? () {
-              setState(() {
-                _activeStrokeList.add(_redoStrokeList.removeLast());
-              });
-            } : null,
-            icon: const Icon(Icons.redo)
-          ),
+  const _SelectColorButton ({
+    required this.color,
+    required this.currentlySelected,
+    required this.handleColorSelected,
+  });
 
-          DropdownButton(
-            value: _currentStrokeBrushSize,
-            items: [
-              DropdownMenuItem(
-                value: 2.0,
-                child: Text('small')
-              ),
-              DropdownMenuItem(
-                value: 4.0,
-                child: Text('medium')
-              ),
-              DropdownMenuItem(
-                value: 8.0,
-                child: Text('large')
-              )
-            ],
-            onChanged: (value) {
-              setState(() {
-                _currentStrokeBrushSize = value!;
-              });
-            }
-          ),
-
-          Row(
-            children: [
-              _selectColorButton(Colors.black),
-              _selectColorButton(Colors.red),
-              _selectColorButton(Colors.blue),
-              _selectColorButton(Colors.green),
-            ],
-          )
-        ],
-      )
-    );
-  }
-
-
-
-  Widget _selectColorButton(Color color) {
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: (){
-        setState(() {
-          _currentStrokeColor = color;
-        });
-      },
+      onTap: (){ handleColorSelected(color); },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
         width: 24,
         height: 24,
-        decoration: BoxDecoration(
+        decoration:  BoxDecoration(
           color: color,
           shape: BoxShape.circle,
           border: Border.all(
-            color: _currentStrokeColor == color ? Colors.grey : Colors.transparent
+            color: currentlySelected ? Colors.grey : Colors.transparent
           )
-        )
-      )
+        ),
+      ),
     );
   }
 }

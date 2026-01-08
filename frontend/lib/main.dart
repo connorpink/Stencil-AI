@@ -78,10 +78,9 @@ class _MainAppState extends State<MainApp> {
     // configure hive while the splash screen plays
     artworkBox = Hive.box<ArtworkModel>('artwork');
 
+    // wait for the server to return the users authentication status, or wait 6 seconds, (whichever comes second)
     final fetchUser = authCubit.checkAuth();
     final defaultWait = Future.delayed(const Duration(seconds: 6));
-
-    // wait for both benchmarks to be reached
     await Future.wait([
       fetchUser,
       defaultWait
