@@ -18,18 +18,30 @@ class StencilModelAdapter extends TypeAdapter<StencilModel> {
     };
     return StencilModel(
       prompt: fields[0] as String,
-      imageList: (fields[1] as List).cast<ImageModel>(),
+      preferredImageIndex: fields[1] as int,
+      imageList: (fields[2] as List).cast<ImageModel>(),
+      position: (fields[3] as List?)?.cast<double>(),
+      rotation: fields[4] as double?,
+      scale: fields[5] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, StencilModel obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.prompt)
       ..writeByte(1)
-      ..write(obj.imageList);
+      ..write(obj.preferredImageIndex)
+      ..writeByte(2)
+      ..write(obj.imageList)
+      ..writeByte(3)
+      ..write(obj.position)
+      ..writeByte(4)
+      ..write(obj.rotation)
+      ..writeByte(5)
+      ..write(obj.scale);
   }
 
   @override

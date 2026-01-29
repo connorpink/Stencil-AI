@@ -19,26 +19,29 @@ class WaitingRoomScreen extends StatefulWidget {
 }
 
 class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
+
   @override
   void initState() {
     super.initState();
-    _waitForArtwork();
+    _waitForArtwork()
+    .then((artwork) {
+      if (mounted) { context.replace('/draw', extra: artwork); }
+    });
   }
 
   // wait for the artwork promise to be resolved before loading the artwork page
-  Future<void> _waitForArtwork() async {
+  Future<ArtworkEntity> _waitForArtwork() async {
     try {
-      final artwork = await widget.artworkPromise;
-      if (mounted) {
-        context.replace('/draw', extra: artwork); 
-      }
-    } catch (error) {
-      // Handle error - maybe show a dialog or navigate to error screen
+      final ArtworkEntity artwork = await widget.artworkPromise;
+      return artwork;
+    }
+    catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate artwork: $error')),
+          SnackBar(content: Text('Failed to fetch artwork')),
         );
       }
+      rethrow;
     }
   }
 

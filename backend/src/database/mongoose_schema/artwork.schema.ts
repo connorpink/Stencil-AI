@@ -15,6 +15,7 @@ export class Artwork {
    @Prop({ type: [Object], default: [] })
    stencilList: {
       prompt: string;
+      preferredImageIndex: number;
       imageList: {
          path: string;
          url: string;
@@ -24,14 +25,14 @@ export class Artwork {
          is_stream: boolean;
          meta: any;
       }[];
+      position?: number[]; // Coordinates [x,y]
+      rotation?: number;
+      scale?: number;
    }[];
 
    @Prop({ type: [Object], default: [] })
    strokeList: {
-      points: {
-         dx: number;
-         dy: number;
-      }[];
+      pointList: [][];
       color: number;
       brushSize: number;
    }[]

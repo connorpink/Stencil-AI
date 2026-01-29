@@ -24,7 +24,7 @@ class ImageModelAdapter extends TypeAdapter<ImageModel> {
       mime_type: fields[4] as String?,
       is_stream: fields[5] as bool,
       meta: fields[6] as dynamic,
-      content: fields[7] as Uint8List?,
+      content: fields[7] as Uint8List,
     );
   }
 

@@ -1,9 +1,13 @@
 import 'package:flutter_frontend/features/drawing/domain/entities/artwork_entity.dart';
+import 'package:flutter_frontend/features/drawing/domain/entities/stencil_entity.dart';
 import 'package:flutter_frontend/features/drawing/domain/repositories/artwork_repository_interface.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_frontend/features/drawing/domain/entities/stroke_entity.dart';
-import 'package:flutter_frontend/features/drawing/presentation/widgets/drawing_canvas.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen_widgets/drawing_canvas.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen_widgets/select_color_button.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen_widgets/stencil_canvas.dart';
+import 'package:flutter_frontend/features/drawing/presentation/screens/draw_screen_widgets/stencil_select_panel.dart';
 
 class DrawScreen extends StatefulWidget {
   final ArtworkEntity artwork;
@@ -20,8 +24,13 @@ class DrawScreen extends StatefulWidget {
 }
 
 class _DrawScreenState extends State<DrawScreen> {
+  late ArtworkEntity _artwork;
 
-  // stroke variables
+  bool _editStencilMode = false;
+  bool _stencilPanelOpen = false;
+
+  // stroke list variables
+  // ignore: prefer_final_fields
   List<StrokeEntity> _redoStrokeList = [];
   List<StrokeEntity> _activeStrokeList = []; 
 
@@ -31,12 +40,26 @@ class _DrawScreenState extends State<DrawScreen> {
   @override
   void initState() {
     super.initState();
-    _activeStrokeList = widget.artwork.strokeList;
+    _artwork = widget.artwork;
+    _activeStrokeList = _artwork.strokeList;
+  }
+
+  void _togglePanel() {
+    setState(() {
+      _stencilPanelOpen = !_stencilPanelOpen;
+    });
+  }
+
+  void _setPanelOpen(bool setting) {
+    setState(() {
+      _stencilPanelOpen = setting;
+    });
+    _stencilPanelOpen = setting;
   }
 
   Future<void> _saveDrawing(String title) async {
-    widget.artwork.strokeList = _activeStrokeList;
-    widget.artworkRepository.saveArtwork(widget.artwork);
+    _artwork.strokeList = _activeStrokeList;
+    widget.artworkRepository.saveArtwork(_artwork);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Drawing $title saved!'))
@@ -71,7 +94,7 @@ class _DrawScreenState extends State<DrawScreen> {
                 final newTitle = controller.text.trim();
                 if(newTitle.isNotEmpty){
                   setState(() {
-                    widget.artwork.title = newTitle;
+                    _artwork.title = newTitle;
                   });
                   _saveDrawing(newTitle);
                   Navigator.of(context).pop();
@@ -96,6 +119,18 @@ class _DrawScreenState extends State<DrawScreen> {
     setState(() { _currentStrokeColor = newColor; });
   }
 
+  void _handleStencilUpdate(int index, StencilEntity stencil) {
+    _artwork.stencilList[index] = stencil;
+  }
+
+  void _handleStencilRemoveFromCanvas(int index) {
+    _artwork.stencilList[index] = _artwork.stencilList[index].copyWith(
+      position: null,
+      rotation: null,
+      scale: null,
+    );
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -105,134 +140,170 @@ class _DrawScreenState extends State<DrawScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.artwork.title)
+
+    final stencilCanvas = RepaintBoundary(
+      child: StencilCanvas( 
+        stencilList: _artwork.stencilList,
+        onStencilUpdate: _handleStencilUpdate,
+        onStencilRemove: _handleStencilRemoveFromCanvas,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Scaffold(
-              body: DrawingCanvas(
-                strokeList: _activeStrokeList,
-                currentStrokeColor: _currentStrokeColor,
-                currentStrokeBrushSize: _currentStrokeBrushSize, 
-                handleNewStroke: _handleNewStroke,
+    );
+
+    final drawingCanvas = RepaintBoundary(
+      child: DrawingCanvas(
+        strokeList: _activeStrokeList,
+        currentStrokeColor: _currentStrokeColor,
+        currentStrokeBrushSize: _currentStrokeBrushSize, 
+        handleNewStroke: _handleNewStroke,
+      ),
+    );
+
+    return Stack (
+      children: [
+        Scaffold(
+
+          appBar: AppBar(
+            title: Text(_artwork.title),
+            actions: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("Edit Stencil Mode"),
+                  Switch(
+                    value: _editStencilMode,
+                    onChanged: (bool value) {
+                      setState(() {
+                        _editStencilMode = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ),
-              floatingActionButton: FloatingActionButton(
-                onPressed: _showSaveDialog,
-                child: const Icon(Icons.save)
-              ),
-            ),
+            ],
           ),
 
-          // ------------ SETTINGS PANEL START ------------
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.grey[200],
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  onPressed: _activeStrokeList.isNotEmpty ? () {
-                    setState(() { _redoStrokeList.add(_activeStrokeList.removeLast()); });
-                  } : null,
-                  icon: const Icon(Icons.undo)
-                ),
+          body: Column(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [ 
 
-                IconButton(
-                  onPressed: _redoStrokeList.isNotEmpty ? () {
-                    setState(() { _activeStrokeList.add(_redoStrokeList.removeLast()); });
-                  } : null,
-                  icon: const Icon(Icons.redo)
-                ),
+                    stencilCanvas,
+                    if (!_editStencilMode) ...[
+                      drawingCanvas,
+                    ],
 
-                DropdownButton(
-                  value: _currentStrokeBrushSize,
-                  items: [
-                    DropdownMenuItem(
-                      value: 2.0,
-                      child: Text('small')
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_editStencilMode) ...[
+                            FloatingActionButton(
+                              heroTag: 'Image Panel',
+                              onPressed: _togglePanel,
+                              child: const Icon(Icons.image)
+                            ),
+                          ],
+                          FloatingActionButton(
+                            heroTag: 'Save',
+                            onPressed: _showSaveDialog,
+                            child: const Icon(Icons.save)
+                          ),
+                        ]
+                      ),
                     ),
-                    DropdownMenuItem(
-                      value: 4.0,
-                      child: Text('medium')
+
+                  ]
+                ),
+              ),
+
+              // ------------ SETTINGS PANEL START ------------
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.grey[200],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      onPressed: _activeStrokeList.isNotEmpty ? () {
+                        setState(() { _redoStrokeList.add(_activeStrokeList.removeLast()); });
+                      } : null,
+                      icon: const Icon(Icons.undo)
                     ),
-                    DropdownMenuItem(
-                      value: 8.0,
-                      child: Text('large')
+
+                    IconButton(
+                      onPressed: _redoStrokeList.isNotEmpty ? () {
+                        setState(() { _activeStrokeList.add(_redoStrokeList.removeLast()); });
+                      } : null,
+                      icon: const Icon(Icons.redo)
+                    ),
+
+                    DropdownButton(
+                      value: _currentStrokeBrushSize,
+                      items: [
+                        DropdownMenuItem(
+                          value: 2.0,
+                          child: Text('small')
+                        ),
+                        DropdownMenuItem(
+                          value: 4.0,
+                          child: Text('medium')
+                        ),
+                        DropdownMenuItem(
+                          value: 8.0,
+                          child: Text('large')
+                        )
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _currentStrokeBrushSize = value!;
+                        });
+                      }
+                    ),
+
+                    Row(
+                      children: [
+                        SelectColorButton(
+                          color: Colors.black,
+                          currentlySelected: (Colors.black == _currentStrokeColor),
+                          handleColorSelected: _handleNewColor
+                        ),
+                        SelectColorButton(
+                          color: Colors.red,
+                          currentlySelected: (Colors.red == _currentStrokeColor),
+                          handleColorSelected: _handleNewColor
+                        ),
+                        SelectColorButton(
+                          color: Colors.blue,
+                          currentlySelected: (Colors.blue == _currentStrokeColor),
+                          handleColorSelected: _handleNewColor
+                        ),
+                        SelectColorButton(
+                          color: Colors.green,
+                          currentlySelected: (Colors.green == _currentStrokeColor),
+                          handleColorSelected: _handleNewColor
+                        ),
+                      ],
                     )
                   ],
-                  onChanged: (value) {
-                    setState(() {
-                      _currentStrokeBrushSize = value!;
-                    });
-                  }
-                ),
-
-                Row(
-                  children: [
-                    _SelectColorButton(
-                      color: Colors.black,
-                      currentlySelected: (Colors.black == _currentStrokeColor),
-                      handleColorSelected: _handleNewColor
-                    ),
-                    _SelectColorButton(
-                      color: Colors.red,
-                      currentlySelected: (Colors.red == _currentStrokeColor),
-                      handleColorSelected: _handleNewColor
-                    ),
-                    _SelectColorButton(
-                      color: Colors.blue,
-                      currentlySelected: (Colors.blue == _currentStrokeColor),
-                      handleColorSelected: _handleNewColor
-                    ),
-                    _SelectColorButton(
-                      color: Colors.green,
-                      currentlySelected: (Colors.green == _currentStrokeColor),
-                      handleColorSelected: _handleNewColor
-                    ),
-                  ],
                 )
-              ],
-            )
-          )
-        ]
-      ),
-      // ------------ SETTINGS PANEL END ------------
-    );
-  }
-}
+              )
+              // ------------ SETTINGS PANEL END ------------
+            ]
+          ),
 
-
-
-class _SelectColorButton extends StatelessWidget {
-  final Color color;
-  final bool currentlySelected;
-  final void Function(Color) handleColorSelected;
-
-  const _SelectColorButton ({
-    required this.color,
-    required this.currentlySelected,
-    required this.handleColorSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: (){ handleColorSelected(color); },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        width: 24,
-        height: 24,
-        decoration:  BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: currentlySelected ? Colors.grey : Colors.transparent
-          )
         ),
-      ),
+
+        // panel off to the side of the screen
+        StencilSelectPanel(
+          stencilList: _artwork.stencilList,
+          isPanelOpen: _stencilPanelOpen,
+          setPanelOpen: _setPanelOpen,
+        ),
+      ]
     );
   }
 }

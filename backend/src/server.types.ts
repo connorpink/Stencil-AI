@@ -26,17 +26,16 @@ export type ArtworkDto = {
 
 export type StencilDto = {
    prompt: string;
+   preferredImageIndex: number;
    imageList: ImageDto[];
+   position?: number[]; // Coordinates [x,y]
+   rotation?: number;
+   scale?: number;
 }
 
 type StrokeDto = {
-   points: OffsetDto[];
+   pointList: number[][]; // List of coordinates [x,y]
    color: number;
    brushSize: number;
-}
-
-type OffsetDto = {
-   dx: number;
-   dy: number;
 }
 // artwork dto end

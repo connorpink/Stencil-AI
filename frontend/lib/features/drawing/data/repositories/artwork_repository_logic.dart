@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_frontend/features/drawing/data/datasources/artwork_local_datasource.dart';
 import 'package:flutter_frontend/features/drawing/data/models/artwork_model.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_frontend/features/drawing/domain/repositories/artwork_re
 import 'package:flutter_frontend/services/dio_client.dart';
 import 'package:flutter_frontend/services/logger.dart';
 import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
 
 class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
   final _uuid = const Uuid();
@@ -19,11 +21,11 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
 
     // this function takes a list of ArtworkModels (fetched from _localDatasource) and a list of server objects
     // returns a list of server objects that either dont exist in _localDatasource or are a newer version of the _localDatasource version of their objects
-    List<ArtworkModel> findNewObjects(List<ArtworkModel> artworkList, List<Map<String, dynamic>> serverObjectList) {
+    Future<List<ArtworkModel>> findNewObjects(List<ArtworkModel> artworkList, List<Map<String, dynamic>> serverObjectList) async {
 
       // this is the list that will be returned at the end
       List<ArtworkModel> completeArtworkList = [];
-      serverObjectList.map((serverObject){
+      Future.wait(serverObjectList.map((serverObject) async {
 
         // check if the serverObject already exists inside artwork list
         bool matchFound = false;
@@ -31,7 +33,8 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
 
           // check if the ids match
           if (serverObject['id'] == artwork.serverId) {
-            final serverArtwork = ArtworkModel.fromServerObject(artwork.id, serverObject);
+            final List<List<Uint8List>> imageContentGrid = artwork.packageImageContent();
+            final serverArtwork = ArtworkModel.fromServerObject(artwork.id, imageContentGrid, serverObject);
             
             // check what artwork is the most up to date
             if (serverArtwork.updatedAt.isAfter(artwork.updatedAt)) {
@@ -45,10 +48,11 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
         }
 
         if (!matchFound) {
-          final serverArtwork = ArtworkModel.fromServerObject(_uuid.v4(), serverObject);
+          final List<List<Uint8List>> imageContentGrid = await _setupImageContentGridUsingServer(serverObject);
+          final ArtworkModel serverArtwork = ArtworkModel.fromServerObject(_uuid.v4(), imageContentGrid, serverObject);
           completeArtworkList.add(serverArtwork);
         }
-      });
+      }));
 
       return completeArtworkList;
     }
@@ -57,13 +61,13 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
 
     // only check with the server for artworks if requested by the client
     if (checkServer) {
-      dio.sendRequest<List<ArtworkModel>>(
+      dio.sendRequest<Future<List<ArtworkModel>>>(
         'GET', 
         '/artwork/fetchAll',
         responseProcessor: (serverObjectList) => findNewObjects(artworkList, serverObjectList)
       )
-      .then((response){
-        final List<ArtworkModel> serverArtworkList = response.data ?? [];
+      .then((response) async {
+        final List<ArtworkModel> serverArtworkList = await response.data ?? [];
         for (ArtworkModel serverArtwork in serverArtworkList) {
           _localDatasource.saveArtwork(serverArtwork.id, serverArtwork);
         }
@@ -79,41 +83,44 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
   @override
   Future<ArtworkEntity> fetchArtwork(String id) async {
 
-    late final ArtworkModel? artwork;
+    late final ArtworkModel? localArtwork;
 
-    // attempt to grab the artwork locally
-    try { artwork = _localDatasource.fetchArtwork(id); }
+    // fetch the artwork locally
+    try { localArtwork = _localDatasource.fetchArtwork(id); }
     catch (error) { appLogger.e("local storage failed to save artwork \nError: $error"); }
 
-    if (artwork == null) {
+    if (localArtwork == null) {
       appLogger.e('Local storage failed to find artwork with id: $id');
       throw Exception('Local storage failed to find artwork, please try again');
     }
 
-    // if artwork doesn't have an assigned id, throw a warning and end the function
-    if (artwork.serverId == null) { 
+    // if artwork doesn't have an assigned id, throw a warning and return the artwork
+    if (localArtwork.serverId == null) { 
       appLogger.w('No serverId assigned to artwork with Id: $id');
-      return artwork.toEntity();
+      return localArtwork.toEntity();
     }
 
-    // get the artwork globally
+    // get a grid of all images associated with artwork so we dont need to redownload them
+    final List<List<Uint8List>> imageContentGrid = localArtwork.packageImageContent();
+
+    // fetch the artwork globally
     final ApiResponse<ArtworkModel> response = await dio.sendRequest<ArtworkModel>(
-      'GET', 
+      'GET',
       '/artwork/fetch/$id', 
-      responseProcessor: (serverObject) => ArtworkModel.fromServerObject(artwork!.serverId!, serverObject)
+      responseProcessor: (serverObject) => ArtworkModel.fromServerObject(localArtwork!.serverId!, imageContentGrid, serverObject)
     );
 
     final ArtworkModel? serverArtwork = response.data;
       
     if (serverArtwork == null) {
-      appLogger.w("Server didn't return an artwork, The artwork object likely doesn't exist server side.");
+      appLogger.w("Server didn't return an artwork for id: ${localArtwork.serverId}");
     }
-    else if (serverArtwork.updatedAt.isAfter(artwork.updatedAt)) {
+    else if (serverArtwork.updatedAt.isAfter(localArtwork.updatedAt)) {
       _localDatasource.saveArtwork(id, serverArtwork);
       return serverArtwork.toEntity();
     }
 
-    return artwork.toEntity();
+    return localArtwork.toEntity();
   }
 
   @override
@@ -124,17 +131,19 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
     late final ArtworkModel newArtwork;
 
     try {
-      final ApiResponse response = await dio.sendRequest<ArtworkModel>(
+      final response = await dio.sendRequest<Future<ArtworkModel>>(
         'POST',
         '/artwork/create',
         data: {'title': 'new artwork', 'prompt': prompt},
-        responseProcessor: (serverObject) { 
-          appLogger.i('serverObject: $serverObject');
-          return ArtworkModel.fromServerObject(clientId, serverObject); 
+        responseProcessor: (serverObject) {
+          return _setupImageContentGridUsingServer(serverObject)
+          .then((imageContentGrid){
+            return ArtworkModel.fromServerObject(clientId, imageContentGrid, serverObject);
+          });
         },
       );
-      newArtwork = response.data;
-      appLogger.i(response.toString());
+      if (response.data == null) { throw Exception(response.toString()); }
+      newArtwork = await response.data!;
     }
     catch (error) {
       appLogger.e("Artwork repository failed to receive a valid artworkModel from dio \nError: $error");
@@ -221,4 +230,27 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
 
   @override
   Listenable get listenable => _localDatasource.listenable;
+
+  //function for local use only
+  Future<List<List<Uint8List>>> _setupImageContentGridUsingServer(Map<String, dynamic> jsonArtwork) async {
+    
+    return Future.wait(
+      (jsonArtwork['stencilList'] as List).map((jsonStencil) async {
+
+        return Future.wait(
+          (jsonStencil['imageList'] as List).map((jsonImage) async {
+            
+            final String url = jsonImage['url'];
+            try {
+              final response = await http.get(Uri.parse(url));
+              if (response.statusCode == 200) { return response.bodyBytes; }
+              else { throw Exception('Failed to load image: ${response.statusCode}'); }
+            } 
+            catch (error) {
+              throw Exception('http request: $url returned: $error');
+            }
+          }).toList());
+      }).toList()
+    );
+  }
 }

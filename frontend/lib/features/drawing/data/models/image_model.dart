@@ -1,7 +1,5 @@
 import 'dart:typed_data';
-
 import 'package:flutter_frontend/features/drawing/domain/entities/image_entity.dart';
-import 'package:flutter_frontend/services/dio_client.dart';
 import 'package:hive/hive.dart';
 
 part 'image_model.g.dart';
@@ -31,7 +29,7 @@ class ImageModel {
   final dynamic meta;
 
   @HiveField(7)
-  late final Uint8List? content;
+  final Uint8List content;
 
   ImageModel({
     required this.path,
@@ -41,7 +39,7 @@ class ImageModel {
     this.mime_type,
     required this.is_stream,
     this.meta,
-    this.content,
+    required this.content,
   });
 
   // converts flutter models to server objects
@@ -58,7 +56,7 @@ class ImageModel {
   }
 
   // converts server objects to flutter models
-  factory ImageModel.fromServerObject(Map<String, dynamic> jsonStencil) {
+  factory ImageModel.fromServerObject(Uint8List content, Map<String, dynamic> jsonStencil) {
     return ImageModel(
       path: jsonStencil['path'],
       url: jsonStencil['url'],
@@ -67,13 +65,28 @@ class ImageModel {
       mime_type: jsonStencil['mime_type'],
       is_stream: jsonStencil['is_stream'],
       meta: jsonStencil['meta'],
+      content: content,
     );
   }
 
-  Future<void> loadContent() async {
-    final response = await dio.sendRequest<Uint8List>('GET', url);
-    content = response.data;
+  Uint8List packageImageContent() {
+    return content;
   }
+
+  /*
+  Future<void> fetchImageContent() async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) { 
+        content = response.bodyBytes;
+      } 
+      else { throw Exception('Failed to load image: ${response.statusCode}'); }
+    } 
+    catch (error) {
+      throw Exception('http request: $url returned: $error');
+    }
+  }
+  */
 
   ImageEntity toEntity() {
     return ImageEntity(

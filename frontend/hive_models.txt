@@ -12,8 +12,12 @@ ArtworkModel - typeId: 0
    List<StrokeModel> strokeList
 
 StencilModel - typeId: 1
-   String name
-   Unit8List imageData
+  final String prompt;
+  final int preferredImageIndex;
+  final List<ImageModel> imageList;
+  final List<double>? position;
+  final double? rotation;
+  final double? scale;
 
 ImageModel - typeId: 2
   String url;

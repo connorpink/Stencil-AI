@@ -144,8 +144,8 @@ export class OenoService {
                this.volumeService.saveImage(buffer, 'stencil', fileName);
 
                // redefine the path and url to where it is saved in the server
-               image.path = "stencil/" + fileName;
-               image.url = "public/" + image.path;
+               image.path = "/stencil/" + fileName;
+               image.url = "http://localhost:3000/public" + image.path;
 
                return image;
             }
@@ -157,6 +157,7 @@ export class OenoService {
 
       return {
          prompt: prompt,
+         preferredImageIndex: 1,
          imageList: imageList,
       };
    }

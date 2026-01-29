@@ -31,87 +31,11 @@ export class ArtworkService {
       try {
          const subPromptList: string[] = await this.oenoService.breakPrompt(prompt, stencilCount);
 
-         /*
          const promisedStencilList: Promise<StencilDto>[] = subPromptList.map(
             (subPrompt) => { return this.oenoService.generateStencil(subPrompt); }
          );
 
          stencilList = await Promise.all(promisedStencilList);
-         */
-
-         // ! start of test code
-         stencilList = [
-            {
-               prompt: "Knight - swinging a sword", 
-               imageList: [
-                  {
-                     path: "stencil/oenoImage-1767125791021.webp", 
-                     url: "public/stencil/oenoImage-1767125791021.webp", 
-                     size: undefined, 
-                     orig_name: undefined,
-                     mime_type: undefined,
-                     is_stream: false, 
-                     meta: {}
-                  }, 
-                  {
-                     path: "stencil/oenoImage-1767125791031.webp", 
-                     url: "public/stencil/oenoImage-1767125791031.webp", 
-                     size: undefined, 
-                     orig_name: undefined, 
-                     mime_type: undefined, 
-                     is_stream: false, 
-                     meta: {}
-                  }
-               ]
-            }, 
-            {
-               prompt: "Dragon - spreading wings", 
-               imageList: [
-                  {
-                     path: "stencil/oenoImage-1767126425090.webp", 
-                     url: "public/stencil/oenoImage-1767126425090.webp", 
-                     size: undefined, 
-                     orig_name: undefined, 
-                     mime_type: undefined, 
-                     is_stream: false, 
-                     meta: {}
-                  }, 
-                  {
-                     path: "stencil/oenoImage-1767126425221.webp", 
-                     url: "public/stencil/oenoImage-1767126425221.webp", 
-                     size: undefined, 
-                     orig_name: undefined, 
-                     mime_type: undefined, 
-                     is_stream: false, 
-                     meta: {}
-                  }
-               ]
-            }, 
-            {
-               prompt: "Knight - holding a shield", 
-               imageList: [
-                  {
-                     path: "stencil/oenoImage-1767125142078.webp", 
-                     url: "public/stencil/oenoImage-1767125142078.webp", 
-                     size: undefined, 
-                     orig_name: undefined, 
-                     mime_type: undefined, 
-                     is_stream: false, 
-                     meta: {}
-                  }, 
-                  {
-                     path: "stencil/oenoImage-1767125142145.webp", 
-                     url: "public/stencil/oenoImage-1767125142145.webp", 
-                     size: undefined, 
-                     orig_name: undefined, 
-                     mime_type: undefined, 
-                     is_stream: false, 
-                     meta: {}
-                  }
-               ]
-            }
-         ];
-         // ? end of test code
       }
       catch (error) {
          console.error("\x1b[31m[artworkService] server failed to create stencils for the new artwork object\x1b[0m\n", error);

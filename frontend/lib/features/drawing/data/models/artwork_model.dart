@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_frontend/features/drawing/data/models/stencil_model.dart';
 import 'package:flutter_frontend/features/drawing/data/models/stroke_model.dart';
 import 'package:flutter_frontend/features/drawing/domain/entities/artwork_entity.dart';
@@ -52,20 +54,29 @@ class ArtworkModel {
   }
 
   // convert server objects to flutter models
-  factory ArtworkModel.fromServerObject(String clientId, Map<String, dynamic> jsonArtwork) {
+  factory ArtworkModel.fromServerObject(String clientId, List<List<Uint8List>> imageContentGrid, Map<String, dynamic> jsonArtwork) {
     return ArtworkModel(
       id: clientId,
       serverId: jsonArtwork['id'],
       title: jsonArtwork['title'],
       prompt: jsonArtwork['prompt'],
       stencilList: (jsonArtwork['stencilList'] as List)
-        .map((stencil) => StencilModel.fromServerObject(stencil as Map<String, dynamic>))
+        .asMap().entries.map((entry) {
+          int index = entry.key;
+          return StencilModel.fromServerObject(imageContentGrid[index], entry.value as Map<String, dynamic>);
+        })
         .toList(),
       strokeList: (jsonArtwork['strokeList'] as List)
         .map((stroke) => StrokeModel.fromServerObject(stroke as Map<String, dynamic>))
         .toList(),
       updatedAt: DateTime.parse(jsonArtwork['updatedAt']),
     );
+  }
+
+  List<List<Uint8List>> packageImageContent() {
+    return stencilList.map((stencil) {
+      return stencil.packageImageContent();
+    }).toList();
   }
 
   ArtworkEntity toEntity() {

@@ -8,7 +8,7 @@ class ImageEntity {
   final String? mime_type;
   final bool is_stream;
   final dynamic meta;
-  final Uint8List? content;
+  final Uint8List content;
 
   ImageEntity({
     required this.path,
@@ -18,6 +18,6 @@ class ImageEntity {
     this.mime_type,
     required this.is_stream,
     this.meta,
-    this.content,
+    required this.content,
   });
 }
