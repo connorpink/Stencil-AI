@@ -29,13 +29,92 @@ export class ArtworkService {
 
       // set the stencilList field for the artwork
       try {
+         /*
          const subPromptList: string[] = await this.oenoService.breakPrompt(prompt, stencilCount);
 
          const promisedStencilList: Promise<StencilDto>[] = subPromptList.map(
             (subPrompt) => { return this.oenoService.generateStencil(subPrompt); }
          );
 
-         stencilList = await Promise.all(promisedStencilList);
+         stencilList = await Promise.all(promisedStencilList); 
+         */
+
+
+         // ! start of test code
+         stencilList = [
+            {
+               prompt:"knight - raising a sword",
+               preferredImageIndex:1,
+               imageList:[
+                  {
+                     path:"/stencil/oenoImage-1769714579404.webp",
+                     url:"http://localhost:3000/public/stencil/oenoImage-1769714579404.webp",
+                     size:null,
+                     orig_name:null,
+                     mime_type:null,
+                     is_stream:false,
+                     meta:{"_type":"gradio.FileData"}
+                  },
+                  {
+                     path:"/stencil/oenoImage-1769714579374.webp",
+                     url:"http://localhost:3000/public/stencil/oenoImage-1769714579374.webp",
+                     size:null,
+                     orig_name:null,
+                     mime_type:null,
+                     is_stream:false,
+                     meta:{"_type":"gradio.FileData"}
+                  }
+               ]
+            },
+            {
+               prompt:"dragon - breathing fire",
+               preferredImageIndex:1,
+               imageList:[
+                  {
+                     path:"/stencil/oenoImage-1769715937365.webp",
+                     url:"http://localhost:3000/public/stencil/oenoImage-1769715937365.webp",
+                     size:null,
+                     orig_name:null,
+                     mime_type:null,
+                     is_stream:false,
+                     meta:{"_type":"gradio.FileData"}},
+                  {
+                     path:"/stencil/oenoImage-1769715937386.webp",
+                     url:"http://localhost:3000/public/stencil/oenoImage-1769715937386.webp",
+                     size:null,
+                     orig_name:null,
+                     mime_type:null,
+                     is_stream:false,
+                     meta:{"_type":"gradio.FileData"}
+                  }
+               ]
+            },
+            {
+               prompt:"princess - watching intently",
+               preferredImageIndex:1,
+               imageList:[
+                  {
+                     path:"/stencil/oenoImage-1769716955999.webp",
+                     url:"http://localhost:3000/public/stencil/oenoImage-1769716955999.webp",
+                     size:null,
+                     orig_name:null,
+                     mime_type:null,
+                     is_stream:false,
+                     meta:{"_type":"gradio.FileData"}
+                  },
+                  {
+                     path:"/stencil/oenoImage-1769716955963.webp",
+                     url:"http://localhost:3000/public/stencil/oenoImage-1769716955963.webp",
+                     size:null,
+                     orig_name:null,
+                     mime_type:null,
+                     is_stream:false,
+                     meta:{"_type":"gradio.FileData"}
+                  }
+               ]
+            }
+         ]
+            // ? end of test code
       }
       catch (error) {
          console.error("\x1b[31m[artworkService] server failed to create stencils for the new artwork object\x1b[0m\n", error);

@@ -1,9 +1,9 @@
 export type ImageDto = {
    path: string,
    url: string,
-   size?: number,
-   orig_name?: string,
-   mime_type?: string,
+   size?: number | null,
+   orig_name?: string | null,
+   mime_type?: string | null,
    is_stream: boolean,
    meta: any
 }
