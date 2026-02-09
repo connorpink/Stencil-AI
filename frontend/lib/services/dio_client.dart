@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_frontend/services/logger.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/* 
-NEGATIVE RESPONSE CODES 
-  -1: Response received but no status code
-  -2: DioException (network error, timeout, etc.)
-  -3: Dio failed to process the returned object, either object requested or object returned was incorrect
-*/
+const storage = FlutterSecureStorage();
+
+// variables to make sure only on refresh request is active at any given time
+bool _refreshInProgress = false;
+List<Function> _requestsWaitingForRefresh = [];
 
 // establish a connection to the server
 final dio = Dio(BaseOptions(
@@ -16,15 +16,155 @@ final dio = Dio(BaseOptions(
   headers: {'Content-Type': 'application/json'}
 ));
 
+// ? A version of dio that is clean and without interceptors, this should be used inside the dio interceptors to avoid loops
+final _dioWithoutInterceptors = Dio(BaseOptions(
+  baseUrl: 'http://localhost:3000',
+  connectTimeout: Duration(seconds: 10),
+  receiveTimeout: Duration(seconds: (60 * 60)),
+  headers: {'Content-Type': 'application/json'}
+));
+
+// A faster version of dio interceptors that fetch jwt tokens from the memory
+void setupDioAuth(String? Function() getAccessToken, String? Function() getRefreshToken, void Function(String) setAccessToken) {
+
+  //! this clears all interceptors, if permanent interceptors are being added before this function is called, make sure this section of code is modified
+  dio.interceptors.clear();
+
+  dio.interceptors.add(InterceptorsWrapper(
+    onRequest: (options, handler) {
+      final accessToken = getAccessToken();
+      options.headers['Authorization'] = 'Bearer $accessToken';
+      handler.next(options);
+    },
+
+    onError: (baseError, handler) async {
+      if (baseError.response?.statusCode == 401) {
+        final refreshToken = getRefreshToken();
+        if (refreshToken != null) {
+          try { 
+            await _handleRefresh(getAccessToken, setAccessToken, refreshToken, baseError, handler);
+            return;
+          }
+          catch (unexpectedError){
+            appLogger.e('dio ran into an unexpected error while attempting a refresh', error: unexpectedError);
+            return handler.next(baseError);
+          }
+        }
+      }
+      handler.next(baseError);
+    }
+  ));
+}
+
+Future<void> _handleRefresh(String? Function() getAccessToken, void Function(String) setAccessToken, String refreshToken, DioException oldDioError, ErrorInterceptorHandler handler) async {
+  // first check to make sure a refresh request isn't already being made
+  if (_refreshInProgress) {
+    // add the _retryRequest function to the que and let the first refresh pass handle the request form there
+    _requestsWaitingForRefresh.add(() => _retryRequest(getAccessToken, oldDioError, handler));
+    return;
+  }
+
+  // handle the refresh on this pass if refresh isn't yet in progress
+  _refreshInProgress = true;
+
+  try {
+    final newAccessToken = await _requestRefresh(setAccessToken, refreshToken);
+
+    if (newAccessToken != null) {
+      // complete current request
+      await _retryRequest(getAccessToken, oldDioError, handler);
+      // complete backlog of requests waiting for a refresh
+      for ( var request in _requestsWaitingForRefresh) { await request(); }
+      _requestsWaitingForRefresh.clear();
+    }
+    else { 
+      _handleRefreshTokenRejected();
+      handler.next(oldDioError);
+    }
+  }
+  catch (error) {
+    appLogger.e('Error during token refresh', error: error);
+    _handleRefreshTokenRejected();
+    handler.next(oldDioError);
+  }
+  finally {
+    // cleanup variable before exiting code
+    _requestsWaitingForRefresh.clear();
+    _refreshInProgress = false;
+  }
+  return;
+}
+
+Future<String?> _requestRefresh(void Function(String) setAccessToken, String refreshToken) async{
+  try {
+    final response = await _dioWithoutInterceptors.post(
+      '/auth/refresh',
+      data: {'refreshToken': refreshToken}
+    );
+    
+    if (response.statusCode == 200) {
+      final newAccessToken = response.data['accessToken'];
+      
+      // Store new tokens
+      await storage.write(key: 'access_token', value: newAccessToken);
+      setAccessToken(newAccessToken);
+      
+      return newAccessToken;
+    }
+  } catch (error) {
+    appLogger.e('Failed to refresh token', error: error);
+  }
+
+  return null;
+}
+
+void _handleRefreshTokenRejected() async {
+  appLogger.e('Token refresh failed - user needs to re-authenticate');
+
+  // remove tokens from the keychain
+  await storage.delete(key: 'access_token');
+  await storage.delete(key: 'refresh_token');
+  _requestsWaitingForRefresh.clear();
+}
+
+// executes a failed request a second time
+Future<void> _retryRequest(String? Function() getAccessToken, DioException oldDioError, ErrorInterceptorHandler handler) async {
+
+  // get the new access token and make sure it exists
+  late final String? accessToken;
+  accessToken = getAccessToken();
+
+  if (accessToken == null) { return handler.next(oldDioError); }
+
+  // resend the original request with the new access tokens
+  final oldOptions = oldDioError.requestOptions;
+  final newOptions = Options(
+    method: oldOptions.method,
+    headers: {
+      ...oldOptions.headers,
+      'Authorization': 'Bearer $accessToken',
+    },
+  );
+
+  final response = await _dioWithoutInterceptors.request(
+    oldOptions.path,
+    data: oldOptions.data,
+    queryParameters: oldOptions.queryParameters,
+    options: newOptions,
+  );
+
+  return handler.resolve(response);
+}
+
 // All objects returned to client from dio.sendRequest are ApiResponse objects
 class ApiResponse<T> {
   final int code;
-  final T? data;
+  final T data;
   final String message;
 
   ApiResponse({
     required this.code,
-    this.data,
+    required this.data,
     required this.message
   });
 
@@ -72,35 +212,28 @@ extension DioApiExtension on Dio {
           error: error,
           stackTrace: stack,
         );
-        return ApiResponse<T>(
-          code: -3, // Dio ran into an issue processing the returned value
-          data: null,
-          message: "dio had an issue processing the returned data, please examine logs to find solution",
-        );
+        rethrow;
       }
       
       return ApiResponse<T>(
-        code: response.statusCode ?? -1, // send -1 if request was successful but error code was not provided for some reason
+        code: response.statusCode ?? 0,
         data: returnedObject,
         message: response.statusMessage ?? "Server failed to attach a statusMessage",
       );
     }
     on DioException catch (error) {
       // log what went wrong
-      appLogger.e(
-        'Request failed: $method $path $data \n' 
-        'Error Received: ${error.response?.statusCode} ${error.response?.data}',
+      appLogger.w(
+        'Request failed: $method $path \n'
+        'data: $data \n',
+        error: '${error.response?.statusCode} ${error.response?.data}',
       );
 
-      // try and find a message from the backend explaining what went wrong
-      final backendErrorMessage = error.response?.data is Map ? error.response?.data['message']?.toString() : null;
-      return ApiResponse<T>(
-        code: error.response?.statusCode ?? -2, // send -2 if request failed and error code was not provided for some reason
-        data: null,
-        message: backendErrorMessage ?? error.message ?? "API failed for unknown reason",
-      );
+      rethrow;
     }
-
+    catch (error) {
+      appLogger.e("unexpectedError from dio", error: error);
+      rethrow;
+    }
   }
-
 }

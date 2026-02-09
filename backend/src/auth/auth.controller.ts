@@ -32,11 +32,11 @@ export class AuthController {
       const {accessToken, refreshToken} = await this.authService.createTokens(createdUser);
       if (!accessToken || !refreshToken) { throw new HttpException('AuthService failed to create tokens', 500); }
 
-      // save tokens client side as cookies
-      res.cookie('access_token', accessToken);
-      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000 /* 30 days */ });
-
-      return createdUser;
+      return {
+         accessToken: accessToken,
+         refreshToken: refreshToken,
+         user: createdUser
+      };
    }
 
    @Post('login')
@@ -50,11 +50,11 @@ export class AuthController {
       const { accessToken, refreshToken } = await this.authService.createTokens(validUser);
       if (!accessToken || !refreshToken) { throw new HttpException('AuthService failed to create tokens', 500); }
 
-      // save tokens client side as cookies
-      res.cookie('access_token', accessToken);
-      res.cookie('refresh_token', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000 /* 30 days */ });
-
-      return validUser;
+      return {
+         accessToken: accessToken,
+         refreshToken: refreshToken,
+         user: validUser
+      };
    }
 
    @Post('deleteAccount')

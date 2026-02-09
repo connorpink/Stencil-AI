@@ -1,25 +1,39 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_frontend/features/auth/data/models/authenticated_user_model.dart';
 import 'package:flutter_frontend/features/auth/data/models/user_model.dart';
+import 'package:flutter_frontend/features/auth/domain/entities/authenticated_user_entity.dart';
 import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
 import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository_interface.dart';
+import 'package:flutter_frontend/services/dio_client.dart';
 import 'package:flutter_frontend/services/logger.dart';
-import '../../../../services/dio_client.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthRepository implements AuthRepositoryInterface {
+  final FlutterSecureStorage storage = FlutterSecureStorage();
 
   @override
-  Future<UserEntity?> loginWithUsernamePassword(String username, String password) async {
+  Future<AuthenticatedUserEntity?> loginWithUsernamePassword(String username, String password) async {
 
-    late final UserModel? appUser;
-    late final String responseMessage;
     try {
-      final response = await dio.sendRequest<UserModel>(
+      final response = await dio.sendRequest<AuthenticatedUserModel>(
         'POST', 
         '/auth/login', 
         data: {'username': username, 'password': password},
-        responseProcessor: (json) => UserModel.fromServerObject(json)
+        responseProcessor: (jsonObject) {
+          return AuthenticatedUserModel.fromServerObject(jsonObject);
+        }
       );
-      appUser = response.data;
-      responseMessage = response.message;
+
+      final AuthenticatedUserModel authenticatedUser = response.data;
+
+      storage.write(key: 'access_token', value: authenticatedUser.accessToken);
+      storage.write(key: 'refresh_token', value: authenticatedUser.refreshToken);
+
+      return authenticatedUser.toEntity();
+    }
+    on DioException catch (error) {
+      appLogger.w("login request failed", error: error);
+      throw Exception(error.message);
     }
     catch (error, stack) {
       appLogger.e(
@@ -27,27 +41,31 @@ class AuthRepository implements AuthRepositoryInterface {
         error: error,
         stackTrace: stack,
       );
-      throw 'dio failed to catch exception';
+      throw Exception('dio failed to catch exception');
     }
-
-    if (appUser != null) { return appUser.toEntity(); }
-    else { throw responseMessage; }
   }
 
   @override
-  Future<UserEntity?> registerWithUsernamePassword(String username, String email, String password) async {
-
-    late final UserModel? appUser;
-    late final String responseMessage;
+  Future<AuthenticatedUserEntity?> registerWithUsernamePassword(String username, String email, String password) async {
     try {
-      final ApiResponse response = await dio.sendRequest<UserModel>(
+      final response = await dio.sendRequest<AuthenticatedUserModel>(
         'POST',
         '/auth/register', 
         data: {'username': username, 'email': email, 'password': password},
-        responseProcessor: (json) => UserModel.fromServerObject(json)
+        responseProcessor: (jsonObject) {
+          return AuthenticatedUserModel.fromServerObject(jsonObject);
+        }
       );
-      appUser = response.data;
-      responseMessage = response.message;
+
+      final AuthenticatedUserModel authenticatedUser = response.data;
+      storage.write(key: 'access_token', value: authenticatedUser.accessToken);
+      storage.write(key: 'refresh_token', value: authenticatedUser.refreshToken);
+
+      return authenticatedUser.toEntity();
+    }
+    on DioException catch (error){
+      appLogger.w("login request failed", error: error);
+      throw Exception(error.message);
     }
     catch (error, stack) {
       appLogger.e(
@@ -55,11 +73,8 @@ class AuthRepository implements AuthRepositoryInterface {
         error: error,
         stackTrace: stack,
       );
-      throw 'dio failed to catch exception';
+      throw Exception('dio failed to catch exception');
     }
-
-    if (appUser != null) { return appUser.toEntity(); }
-    else { throw responseMessage; }
   }
   
   @override
@@ -73,15 +88,22 @@ class AuthRepository implements AuthRepositoryInterface {
   }
   
   @override
-  Future<UserEntity?> getCurrentUser() async {
+  Future<UserEntity?> fetchAuthenticatedUser() async {
     try {
-      final response = await dio.sendRequest<UserEntity>('GET', '/auth/status');
-      if (response.code == 200) { return response.data; }
-      if (response.code == 401) { return null; }
-      else { throw Exception("Failed to get status from server"); }
+      final response = await dio.sendRequest<UserModel>(
+        'GET',
+        '/auth/status',
+        responseProcessor: (jsonObject) => UserModel.fromServerObject(jsonObject),
+      );
+      return response.data.toEntity();
+    }
+    on DioException catch(error) {
+      appLogger.w("server failed to return authentication status", error: error);
+      return null;
     }
     catch (error) {
-      throw Exception('Status check failed $error');
+      appLogger.e("unexpected error occurred", error: error);
+      throw Exception('Status check returned and error');
     }
   }
   

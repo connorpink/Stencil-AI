@@ -174,6 +174,7 @@ class _DrawScreenState extends State<DrawScreen> {
                     onChanged: (bool value) {
                       setState(() {
                         _editStencilMode = value;
+                        if (value == false) { _setPanelOpen(false); }
                       });
                     },
                   ),

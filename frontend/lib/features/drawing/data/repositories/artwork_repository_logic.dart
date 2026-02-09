@@ -67,7 +67,7 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
         responseProcessor: (serverObjectList) => findNewObjects(artworkList, serverObjectList)
       )
       .then((response) async {
-        final List<ArtworkModel> serverArtworkList = await response.data ?? [];
+        final List<ArtworkModel> serverArtworkList = await response.data;
         for (ArtworkModel serverArtwork in serverArtworkList) {
           _localDatasource.saveArtwork(serverArtwork.id, serverArtwork);
         }
@@ -142,8 +142,7 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
           });
         },
       );
-      if (response.data == null) { throw Exception(response.toString()); }
-      newArtwork = await response.data!;
+      newArtwork = await response.data;
     }
     catch (error) {
       appLogger.e("Artwork repository failed to receive a valid artworkModel from dio \nError: $error");

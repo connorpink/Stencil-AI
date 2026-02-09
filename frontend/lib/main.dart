@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
 import 'package:flutter_frontend/features/drawing/data/datasources/artwork_local_datasource.dart';
 import 'package:flutter_frontend/features/drawing/data/models/stencil_model.dart';
 import 'package:flutter_frontend/features/drawing/domain/entities/artwork_entity.dart';
 import 'package:flutter_frontend/features/drawing/presentation/screens/waiting_room_screen.dart';
+import 'package:flutter_frontend/services/dio_client.dart';
+import 'package:flutter_frontend/services/logger.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'features/drawing/data/models/stroke_model.dart';
 import 'package:go_router/go_router.dart';
@@ -39,7 +43,6 @@ void main() async {
   
   // open hive
   await Hive.openBox<ArtworkModel>('artwork');
-
   /*
     Setup the main application
   */
@@ -55,45 +58,72 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   late final AuthCubit authCubit;
+  final authRepository = AuthRepository();
   late final Box<ArtworkModel> artworkBox;
   GoRouter? _router;
-  bool _appReady = false;
 
-  final authRepository = AuthRepository();
+  bool _appReady = false;
 
   @override
   void initState() {
     super.initState();
-    authCubit = AuthCubit(authRepository: authRepository);
     _appStartup();
   }
 
   Future<void> _appStartup() async {
-    // pick the starting location
-    final initialLocation = switch (authCubit.state) {
-      Unauthenticated() => '/auth',
-      _ => '/home',
-    };
 
-    // configure hive while the splash screen plays
+    // make sure the _appStartup takes a minimum of 6 seconds to complete
+    final Future<void> defaultWait = Future.delayed(const Duration(seconds: 6));
+
+    // create the auth cubit and setup dio to use it
+    await _authenticateInitialUser();
+
+    // configure hive box
     artworkBox = Hive.box<ArtworkModel>('artwork');
 
-    // wait for the server to return the users authentication status, or wait 6 seconds, (whichever comes second)
-    final fetchUser = authCubit.checkAuth();
-    final defaultWait = Future.delayed(const Duration(seconds: 6));
-    await Future.wait([
-      fetchUser,
-      defaultWait
-    ]);
-    
+    late final initialWindowLocation;
+    if (authCubit.state is Authenticated) { initialWindowLocation =  '/home'; }
+    else { initialWindowLocation = '/auth'; }
+
+    // make sure user has been authenticated (or unauthenticated) and the minimum 6 seconds has been waited
+    setupDioAuth(() => authCubit.accessToken, () => authCubit.refreshToken, (String accessToken) => authCubit.accessToken = accessToken); // once user is fetched, setup dio properly
+
+    await defaultWait;
     // create the router
     setState(() {
-      _router = _buildRouter(initialLocation);
+      _router = _buildRouter(initialWindowLocation);
       _appReady = true;
     });
   }
 
-  GoRouter _buildRouter(String initialLocation) {
+  // authenticate the user and return a starting location based on the result
+  Future<void> _authenticateInitialUser() async {
+    // get access tokens from storage
+    final FlutterSecureStorage storage = FlutterSecureStorage();
+    String? accessToken;
+    late final String? refreshToken;
+    try {
+      accessToken = await storage.read(key: 'access_token');
+      refreshToken = await storage.read(key: 'refresh_token');
+    }
+    catch(error) {
+      appLogger.e("startup ran into an error fetching tokens from the storage", error: error);
+      refreshToken = null;
+    }
+
+    // ? temporally configure dio to bypass the auth cubit while the auth cubit is being setup
+    setupDioAuth(() => accessToken, () => refreshToken, (String newAccessToken) => accessToken = newAccessToken);
+    final UserEntity? user = await authRepository.fetchAuthenticatedUser();
+
+    // create in initialize the auth cubit
+    authCubit = AuthCubit(authRepository: authRepository);
+    await authCubit.setInitialAuthentication(accessToken, refreshToken, user);
+
+    // ? setup dio properly to use whats stored inside the authCubit memory
+    setupDioAuth(() => authCubit.accessToken, () => authCubit.refreshToken, (String accessToken) => authCubit.accessToken = accessToken);
+  }
+
+  GoRouter _buildRouter(String initialLocation,) {
     return GoRouter(
       initialLocation: initialLocation,
       refreshListenable: GoRouterRefreshStream(authCubit.stream),

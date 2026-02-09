@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { RouteCreateArtworkDto } from "./dto/createArtwork.dto";
 import { ArtworkService } from "./artwork.service";
 import { ArtworkDto } from "src/server.types";
 import { RouteSaveArtworkDto } from "./dto/saveArtwork.dto";
 import { RouteFetchArtworkDto } from "./dto/fetchArtwork.dto";
 import { RouteDeleteArtworkDto } from "./dto/deleteArtwork.dto";
+import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
 
 @Controller('artwork')
 export class ArtworkController {
@@ -24,6 +25,7 @@ export class ArtworkController {
    returns: ArtworkDto[]
    */
    @Get('fetchAll')
+   @UseGuards(JwtAuthGuard)
    async fetchAll() {
       const artworkList: ArtworkDto[] = [{
          id: "test id",
@@ -50,6 +52,7 @@ export class ArtworkController {
    returns: ArtworkDto
    */
    @Get('fetch/:artworkId')
+   @UseGuards(JwtAuthGuard)
    async fetch(@Param() params: RouteFetchArtworkDto) {
       const artwork: ArtworkDto = {
          id: params.artworkId,
@@ -77,6 +80,7 @@ export class ArtworkController {
    returns: ArtworkDto
    */
    @Post('create')
+   @UseGuards(JwtAuthGuard)
    async create(@Body() payload: RouteCreateArtworkDto) {
       const newArtwork: ArtworkDto = await this.artworkService.createArtwork(payload);
       return newArtwork;
@@ -96,6 +100,7 @@ export class ArtworkController {
    return: bool (true = saved, false = save failed)
    */
    @Post('save')
+   @UseGuards(JwtAuthGuard)
    async save(@Body() payload: RouteSaveArtworkDto) {
       return true
    }
@@ -114,6 +119,7 @@ export class ArtworkController {
    return bool (true = deleted, false = delete failed)
    */
    @Post('delete')
+   @UseGuards(JwtAuthGuard)
    async delete(@Body() payload: RouteDeleteArtworkDto) {
       return true
    }
