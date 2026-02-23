@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, HttpException, UseGuards, Req, Res } from '@nestjs/common';
+import { Body, Controller, Post, Get, HttpException, UseGuards, Req, Res, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from './guards/jwt.guard';
@@ -16,12 +16,14 @@ export class AuthController {
    }
 
    @Get('status')
+   @HttpCode(200)
    @UseGuards(JwtAuthGuard)
    async status(@Req() req: Request) {
       return req.user;
    }
 
    @Post('register')
+   @HttpCode(201)
    async register(@Body() payload: RequestRegisterDto, @Res({passthrough: true}) res: Response) {
 
       // create user inside the database
@@ -40,6 +42,7 @@ export class AuthController {
    }
 
    @Post('login')
+   @HttpCode(200)
    async login(@Body() payload: RequestLoginDto, @Res({passthrough: true}) res: Response) {
 
       // verify users credentials
@@ -58,6 +61,7 @@ export class AuthController {
    }
 
    @Post('deleteAccount')
+   @HttpCode(201)
    @UseGuards(JwtAuthGuard)
    async deleteAccount(@Req() req: Request) {
 

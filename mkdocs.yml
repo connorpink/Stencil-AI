@@ -1,0 +1,22 @@
+site_name: Stencil AI
+
+nav:
+  - API Documentation:
+    - Artwork Routes: api_documentation/artwork_endpoint_documentation.md
+    - Auth Routes: api_documentation/auth_endpoint_documentation.md
+
+theme:
+  name: material
+  highlightjs: true
+
+markdown_extensions:
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+      toc_depth: 2
+
+extra_css:
+  - stylesheets/extra.css

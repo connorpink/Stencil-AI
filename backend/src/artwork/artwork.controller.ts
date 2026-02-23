@@ -18,29 +18,6 @@ export class ArtworkController {
 
 
    /*
-   route GET artwork/fetchAll
-
-   get a list of all artworks associated with the current user
-
-   returns: ArtworkDto[]
-   */
-   @Get('fetchAll')
-   @UseGuards(JwtAuthGuard)
-   async fetchAll() {
-      const artworkList: ArtworkDto[] = [{
-         id: "test id",
-         title: "",
-         prompt: "",
-         stencilList: [],
-         strokeList: [],
-         updatedAt: new Date(),
-      }];
-      return artworkList;
-   }
-
-
-
-   /*
    route GET artwork/fetch/:artworkId
 
    expects: {
@@ -63,6 +40,29 @@ export class ArtworkController {
          updatedAt: new Date(),
       }
       return artwork;
+   }
+
+   
+
+   /*
+   route GET artwork/fetchAll
+
+   get a list of all artworks associated with the current user
+
+   returns: ArtworkDto[]
+   */
+   @Get('fetchAll')
+   @UseGuards(JwtAuthGuard)
+   async fetchAll() {
+      const artworkList: ArtworkDto[] = [{
+         id: "test id",
+         title: "",
+         prompt: "",
+         stencilList: [],
+         strokeList: [],
+         updatedAt: new Date(),
+      }];
+      return artworkList;
    }
 
 
