@@ -113,7 +113,9 @@ class _MainAppState extends State<MainApp> {
 
     // ? temporally configure dio to bypass the auth cubit while the auth cubit is being setup
     setupDioAuth(() => accessToken, () => refreshToken, (String newAccessToken) => accessToken = newAccessToken);
-    final UserEntity? user = await authRepository.fetchAuthenticatedUser();
+    late final UserEntity? user;
+    try { user = await authRepository.fetchAuthenticatedUser(); }
+    catch(_) { user = null; }
 
     // create in initialize the auth cubit
     authCubit = AuthCubit(authRepository: authRepository);

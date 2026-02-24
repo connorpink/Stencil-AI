@@ -20,7 +20,7 @@ final dio = Dio(BaseOptions(
 final _dioWithoutInterceptors = Dio(BaseOptions(
   baseUrl: 'http://localhost:3000',
   connectTimeout: Duration(seconds: 10),
-  receiveTimeout: Duration(seconds: (60 * 60)),
+  receiveTimeout: Duration(seconds: (60 * 60)), //! this is a 1 hour timeout for testing, only createArtwork in the drawing repo should need this much time before timeout
   headers: {'Content-Type': 'application/json'}
 ));
 
@@ -31,12 +31,15 @@ void setupDioAuth(String? Function() getAccessToken, String? Function() getRefre
   dio.interceptors.clear();
 
   dio.interceptors.add(InterceptorsWrapper(
+
+    // attach JWT access_token to each request (if it exists)
     onRequest: (options, handler) {
       final accessToken = getAccessToken();
       options.headers['Authorization'] = 'Bearer $accessToken';
       handler.next(options);
     },
 
+    // If the request fails, check if it failed with a 401 error and a refresh_token can be used to resend the request with a fresh access_token
     onError: (baseError, handler) async {
       if (baseError.response?.statusCode == 401) {
         final refreshToken = getRefreshToken();
@@ -46,13 +49,13 @@ void setupDioAuth(String? Function() getAccessToken, String? Function() getRefre
             return;
           }
           catch (unexpectedError){
-            appLogger.e('dio ran into an unexpected error while attempting a refresh', error: unexpectedError);
+            appLogger.e('dio ran into an unexpected error while attempting a token refresh', error: unexpectedError);
             return handler.next(baseError);
           }
         }
       }
       handler.next(baseError);
-    }
+    },
   ));
 }
 
@@ -67,64 +70,44 @@ Future<void> _handleRefresh(String? Function() getAccessToken, void Function(Str
   // handle the refresh on this pass if refresh isn't yet in progress
   _refreshInProgress = true;
 
-  try {
-    final newAccessToken = await _requestRefresh(setAccessToken, refreshToken);
-
-    if (newAccessToken != null) {
-      // complete current request
-      await _retryRequest(getAccessToken, oldDioError, handler);
-      // complete backlog of requests waiting for a refresh
-      for ( var request in _requestsWaitingForRefresh) { await request(); }
-      _requestsWaitingForRefresh.clear();
-    }
-    else { 
-      _handleRefreshTokenRejected();
-      handler.next(oldDioError);
-    }
-  }
-  catch (error) {
-    appLogger.e('Error during token refresh', error: error);
-    _handleRefreshTokenRejected();
-    handler.next(oldDioError);
-  }
-  finally {
-    // cleanup variable before exiting code
-    _requestsWaitingForRefresh.clear();
-    _refreshInProgress = false;
-  }
-  return;
-}
-
-Future<String?> _requestRefresh(void Function(String) setAccessToken, String refreshToken) async{
+  late final String newAccessToken;
   try {
     final response = await _dioWithoutInterceptors.post(
       '/auth/refresh',
       data: {'refreshToken': refreshToken}
     );
-    
-    if (response.statusCode == 200) {
-      final newAccessToken = response.data['accessToken'];
-      
-      // Store new tokens
-      await storage.write(key: 'access_token', value: newAccessToken);
-      setAccessToken(newAccessToken);
-      
-      return newAccessToken;
-    }
-  } catch (error) {
-    appLogger.e('Failed to refresh token', error: error);
+    newAccessToken = response.data['accessToken'];
+  }
+  on DioException catch (error) {
+    appLogger.w("Token refresh failed", error: error);
+    _handleRefreshTokenRejected();
+    return handler.next(oldDioError);
   }
 
-  return null;
+  // Store new tokens
+  await storage.write(key: 'access_token', value: newAccessToken);
+  setAccessToken(newAccessToken);
+
+  // complete current request
+  await _retryRequest(getAccessToken, oldDioError, handler);
+
+  for ( var request in _requestsWaitingForRefresh) { await request(); }
+  _requestsWaitingForRefresh.clear();
+
+  // cleanup variable before exiting code
+  _requestsWaitingForRefresh.clear();
+  _refreshInProgress = false;
+
+  return;
 }
 
 void _handleRefreshTokenRejected() async {
-  appLogger.e('Token refresh failed - user needs to re-authenticate');
-
   // remove tokens from the keychain
   await storage.delete(key: 'access_token');
   await storage.delete(key: 'refresh_token');
+
   _requestsWaitingForRefresh.clear();
+  _refreshInProgress = false;
 }
 
 // executes a failed request a second time
@@ -223,12 +206,7 @@ extension DioApiExtension on Dio {
     }
     on DioException catch (error) {
       // log what went wrong
-      appLogger.w(
-        'Request failed: $method $path \n'
-        'data: $data \n',
-        error: '${error.response?.statusCode} ${error.response?.data}',
-      );
-
+      appLogger.w('Request failed: $method $path', error: 'API error response: ${error.response?.data}');
       rethrow;
     }
     catch (error) {

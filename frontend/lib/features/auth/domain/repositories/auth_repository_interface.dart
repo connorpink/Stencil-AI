@@ -2,10 +2,10 @@ import 'package:flutter_frontend/features/auth/domain/entities/authenticated_use
 import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
 
 abstract class AuthRepositoryInterface {
-  Future<AuthenticatedUserEntity?> loginWithUsernamePassword(String username, String password);
-  Future<AuthenticatedUserEntity?> registerWithUsernamePassword(String username, String email, String password);
+  Future<AuthenticatedUserEntity> loginWithUsernamePassword(String username, String password);
+  Future<AuthenticatedUserEntity> registerWithUsernamePassword(String username, String email, String password);
   Future<void> logout();
-  Future<UserEntity?> fetchAuthenticatedUser();
+  Future<UserEntity> fetchAuthenticatedUser();
   Future<String> sendPasswordResetEmail(String email);
   Future<void> deleteAccount();
 }

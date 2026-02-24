@@ -4,7 +4,7 @@ final appLogger = Logger(
   printer: PrettyPrinter(
     methodCount: 6,
     errorMethodCount: 8,
-    lineLength: 140,
+    lineLength: 12,
     colors: true,
     dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
   ),

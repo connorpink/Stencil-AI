@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_frontend/features/drawing/data/datasources/artwork_local_datasource.dart';
@@ -15,6 +16,16 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
 
   ArtworkRepositoryLogic({required ArtworkLocalDatasource localDatasource})
     : _localDatasource = localDatasource;
+
+  // default error handler for all functions inside the repository
+  Future<T> _defaultErrorHandler<T>( String functionName, Future<T> Function() request) async {
+    try { return await request(); }
+    on DioException catch(_) { rethrow; } // If it was a DioException dio would have already logged it
+    catch (error) {
+      appLogger.e("artwork_repository.$functionName ran into an unexpected error", error: error);
+      rethrow;
+    }
+  }
 
   @override
   List<ArtworkEntity> fetchAllArtworks({bool checkServer = false}) {
@@ -56,175 +67,157 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
 
       return completeArtworkList;
     }
-    
-    final List<ArtworkModel> artworkList = _localDatasource.fetchAllArtworks();
 
-    // only check with the server for artworks if requested by the client
-    if (checkServer) {
-      dio.sendRequest<Future<List<ArtworkModel>>>(
-        'GET', 
-        '/artwork/fetchAll',
-        responseProcessor: (serverObjectList) => findNewObjects(artworkList, serverObjectList)
-      )
-      .then((response) async {
-        final List<ArtworkModel> serverArtworkList = await response.data;
-        for (ArtworkModel serverArtwork in serverArtworkList) {
+    Future<void> checkServerForAdditionalArtworks(List<ArtworkModel> artworkList) async {
+      return _defaultErrorHandler('fetchAllArtworks', () async {
+        
+        final response = await dio.sendRequest<Future<List<ArtworkModel>>>(
+          'GET', 
+          '/artwork/fetchAll',
+          responseProcessor: (serverObjectList) { 
+            return findNewObjects(artworkList, serverObjectList);
+          }
+        );
+
+        final List<ArtworkModel> newArtworkList = await response.data;
+        for (ArtworkModel serverArtwork in newArtworkList) {
           _localDatasource.saveArtwork(serverArtwork.id, serverArtwork);
         }
-      })
-      .catchError((error){
-        appLogger.e('Server failed to fetch list of artworks from the server \nError: $error');
+
       });
     }
-
+    
+    final List<ArtworkModel> artworkList = _localDatasource.fetchAllArtworks();
+    if (checkServer) { checkServerForAdditionalArtworks(artworkList); } // update from the server if necessary
     return artworkList.map((artwork) { return artwork.toEntity(); }).toList();
   }
 
   @override
   Future<ArtworkEntity> fetchArtwork(String id) async {
+    return _defaultErrorHandler('fetchArtwork', () async {
 
-    late final ArtworkModel? localArtwork;
+      final ArtworkModel? localArtwork = _localDatasource.fetchArtwork(id);
+      if (localArtwork == null ) { throw Exception("artwork_repository.fetchArtwork failed, id provided was not associated with any artworks found in local storage: $id"); }
 
-    // fetch the artwork locally
-    try { localArtwork = _localDatasource.fetchArtwork(id); }
-    catch (error) { appLogger.e("local storage failed to save artwork \nError: $error"); }
+      // if artwork doesn't have an assigned id, throw a warning and return the artwork
+      if (localArtwork.serverId == null) {
+        appLogger.w('No serverId assigned to artwork with Id: $id');
+        return localArtwork.toEntity();
+      }
 
-    if (localArtwork == null) {
-      appLogger.e('Local storage failed to find artwork with id: $id');
-      throw Exception('Local storage failed to find artwork, please try again');
-    }
+      // package all images associated with the artwork so they arn't  redownloaded
+      final List<List<Uint8List>> imageContentGrid = localArtwork.packageImageContent();
 
-    // if artwork doesn't have an assigned id, throw a warning and return the artwork
-    if (localArtwork.serverId == null) { 
-      appLogger.w('No serverId assigned to artwork with Id: $id');
-      return localArtwork.toEntity();
-    }
+      // fetch the artwork globally
+      late final ApiResponse<ArtworkModel> response;
+      try {
+        response = await dio.sendRequest<ArtworkModel>(
+          'GET',
+          '/artwork/fetch/$id', 
+          responseProcessor: (serverObject) => ArtworkModel.fromServerObject(localArtwork.serverId!, imageContentGrid, serverObject)
+        );
+      }
+      on DioException catch(_) {
+        return localArtwork.toEntity();
+      }
 
-    // get a grid of all images associated with artwork so we dont need to redownload them
-    final List<List<Uint8List>> imageContentGrid = localArtwork.packageImageContent();
+      final ArtworkModel serverArtwork = response.data;
 
-    // fetch the artwork globally
-    final ApiResponse<ArtworkModel> response = await dio.sendRequest<ArtworkModel>(
-      'GET',
-      '/artwork/fetch/$id', 
-      responseProcessor: (serverObject) => ArtworkModel.fromServerObject(localArtwork!.serverId!, imageContentGrid, serverObject)
-    );
+      if (serverArtwork.updatedAt.isAfter(localArtwork.updatedAt)) {
+        _localDatasource.saveArtwork(id, serverArtwork);
+        return serverArtwork.toEntity();
+      }
+      else {
+        return localArtwork.toEntity();
+      }
 
-    final ArtworkModel? serverArtwork = response.data;
-      
-    if (serverArtwork == null) {
-      appLogger.w("Server didn't return an artwork for id: ${localArtwork.serverId}");
-    }
-    else if (serverArtwork.updatedAt.isAfter(localArtwork.updatedAt)) {
-      _localDatasource.saveArtwork(id, serverArtwork);
-      return serverArtwork.toEntity();
-    }
-
-    return localArtwork.toEntity();
+    });
   }
 
   @override
   Future<ArtworkEntity> createArtwork(String prompt) async {
+    return _defaultErrorHandler("createArtwork", () async {
 
-    // create an id that client side artwork objects will be recognized by
-    final String clientId = _uuid.v4();
-    late final ArtworkModel newArtwork;
+      // create an id that client side artwork objects will be recognized by
+      final String clientId = _uuid.v4();
+      late final ArtworkModel newArtwork;
 
-    try {
-      final response = await dio.sendRequest<Future<ArtworkModel>>(
-        'POST',
-        '/artwork/create',
-        data: {'title': 'new artwork', 'prompt': prompt},
-        responseProcessor: (serverObject) {
-          return _setupImageContentGridUsingServer(serverObject)
-          .then((imageContentGrid){
-            return ArtworkModel.fromServerObject(clientId, imageContentGrid, serverObject);
-          });
-        },
-      );
-      newArtwork = await response.data;
-    }
-    catch (error) {
-      appLogger.e("Artwork repository failed to receive a valid artworkModel from dio \nError: $error");
-      appLogger.w("Creating a default artworkModel for the user to draw with");
-      newArtwork = ArtworkModel(
-        id: clientId,
-        title: "Unsaved Artwork",
-        prompt: prompt, 
-        stencilList: [],
-        strokeList: [],
-        updatedAt: DateTime.now(),
-      );
-    }
-    
-    _localDatasource.saveArtwork(clientId, newArtwork);
-    
-    return newArtwork.toEntity();
+      try {
+        final response = await dio.sendRequest<Future<ArtworkModel>>(
+          'POST',
+          '/artwork/create',
+          data: {'title': 'new artwork', 'prompt': prompt},
+          responseProcessor: (serverObject) {
+            return _setupImageContentGridUsingServer(serverObject)
+            .then((imageContentGrid){
+              return ArtworkModel.fromServerObject(clientId, imageContentGrid, serverObject);
+            });
+          },
+        );
+        newArtwork = await response.data;
+      }
+      on DioException catch(_) {
+        newArtwork = ArtworkModel(
+          id: clientId,
+          title: "Unsaved Artwork",
+          prompt: prompt, 
+          stencilList: [],
+          strokeList: [],
+          updatedAt: DateTime.now(),
+        );
+      }
+      
+      _localDatasource.saveArtwork(clientId, newArtwork);
+      
+      return newArtwork.toEntity();
+
+    });
   }
 
   @override
-  void saveArtwork(ArtworkEntity artwork) {
+  Future<void> saveArtwork(ArtworkEntity artwork) async {
+    return _defaultErrorHandler("saveArtwork", () async {
 
-    // convert artworkEntity to models and serverObjects
-    final ArtworkModel artworkModel = ArtworkModel.fromEntity(artwork);
-    final artworkServerObject = artworkModel.toServerObject();
+      // convert artworkEntity to models and serverObjects
+      final ArtworkModel artworkModel = ArtworkModel.fromEntity(artwork);
+      final artworkServerObject = artworkModel.toServerObject();
 
-    // save artwork locally
-    try {
+      // save artwork locally
       _localDatasource.saveArtwork(artworkModel.id, artworkModel); 
-    }
-    catch (error) {
-      appLogger.e("local storage failed to save artwork \nError: $error");
-      throw Exception("Failed to save artwork to the local storage, please try again");
-    }
 
-    // attempt to save the artwork globally
-    dio.sendRequest<bool>(
-      'POST',
-      '/artwork/save',
-      data: { 'artwork': artworkServerObject },
-    )
-    .then((response) {
-      if (response.data == false) { appLogger.w("Servers failed to save the artwork without an error. Server side storage limits may have been reached"); }
-    })
-    .catchError((error) {
-      appLogger.w('Server failed to save artwork with serverId: ${artwork.serverId} \nError: $error');
+      // attempt to save the artwork globally
+      await dio.sendRequest<bool>(
+        'POST',
+        '/artwork/save',
+        data: { 'artwork': artworkServerObject },
+      );
+
+      return;
+
     });
-
-    return;
   }
 
   @override
-  void deleteArtwork(ArtworkEntity artwork) {
+  Future<void> deleteArtwork(ArtworkEntity artwork) {
+    return _defaultErrorHandler("deleteArtwork", () async {
 
-    // delete artwork locally
-    try { 
-      _localDatasource.deleteArtwork(artwork.id); 
-    }
-    catch (error) { 
-      appLogger.e('local storage failed to delete artwork object with Id: ${artwork.id} \n Error: $error');
-      throw Exception('Failed to delete artwork from the local storage, please try again');
-    }
+      _localDatasource.deleteArtwork(artwork.id);
 
-    if(artwork.serverId == null) {
-      appLogger.w('no serverId attached to deleted artwork object');
+      if(artwork.serverId == null) {
+        appLogger.w('no serverId was attached to the deleted artwork object');
+        return;
+      }
+
+      // delete the artwork globally
+      await dio.sendRequest(
+        'POST',
+        '/artwork/delete',
+        data: { 'id': artwork.serverId }
+      );
+
       return;
-    }
 
-    // attempt to delete artwork globally
-    dio.sendRequest<bool>(
-      'POST',
-      '/artwork/delete',
-      data: { 'id': artwork.serverId }
-    )
-    .then((ApiResponse<bool> response) {
-      if (response.data == false) { appLogger.w("Servers failed to delete the artwork without an error, The artwork object likely doesn't exist server side."); }
-    })
-    .catchError((error){
-      appLogger.w('Server failed to delete artwork object with Id: ${artwork.serverId} \nError: $error');
     });
-
-    return;
   }
 
   @override

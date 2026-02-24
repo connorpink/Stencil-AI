@@ -85,11 +85,4 @@ export class AuthController {
 
       return { message: 'Token refresh successful' }
    }
-
-   @Post('logout')
-   async logout(@Res() res: Response) {
-      res.clearCookie('access_token');
-      res.clearCookie('refresh_token');
-      return { message: 'Logout successful' }; 
-   }
 }

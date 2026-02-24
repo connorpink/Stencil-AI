@@ -1,5 +1,4 @@
 // cubits are responsible for state management
-
 import 'package:flutter_frontend/features/auth/domain/entities/authenticated_user_entity.dart';
 import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
 import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository_interface.dart';
@@ -43,51 +42,41 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> login(String username, String password) async {
+    emit(AuthLoading());
     try {
-      emit(AuthLoading());
-      final returnedAuthenticatedUser = await authRepository.loginWithUsernamePassword(username, password);
-
-      if (returnedAuthenticatedUser != null) {
-        _currentAuthenticatedUser = returnedAuthenticatedUser;
-        emit(Authenticated(returnedAuthenticatedUser));
-      }
-      else {
-        emit(Unauthenticated());
-      }
+      final AuthenticatedUserEntity authenticatedUser = await authRepository.loginWithUsernamePassword(username, password);
+      _currentAuthenticatedUser = authenticatedUser;
+      emit(Authenticated(authenticatedUser));
     }
     catch (error) {
-      emit(AuthError(error.toString()));
-      rethrow;
+      if (error is String) { emit(AuthError(message: error)); }
+      else {
+        appLogger.e("AuthCubit login failed", error: error);
+        emit(AuthError()); 
+      }
     }
   }
 
   Future<void> register(String username, String email, String password) async {
+    emit(AuthLoading());
     try {
-      emit(AuthLoading());
-      final returnedAuthenticatedUser = await authRepository.registerWithUsernamePassword(username, email, password);
-      if (returnedAuthenticatedUser != null) {
-        _currentAuthenticatedUser = returnedAuthenticatedUser;
-        emit(Authenticated(returnedAuthenticatedUser));
-      }
-      else {
-        emit(Unauthenticated());
-      }
+      final AuthenticatedUserEntity authenticatedUser = await authRepository.registerWithUsernamePassword(username, email, password);
+      _currentAuthenticatedUser = authenticatedUser;
+      emit(Authenticated(authenticatedUser));
     }
-    catch (error, stack) {
-      String errorString = error.toString();
-      appLogger.e(
-        'Something went wrong registering the user',
-        error: error,
-        stackTrace: stack
-      );
-      emit(AuthError(errorString));
-      rethrow;
+    catch (error) {
+      if (error is String) { emit(AuthError(message: error)); }
+      else {
+        appLogger.e("AuthCubit register failed", error: error);
+        emit(AuthError()); 
+      }
     }
   }
 
   Future<void> logout() async {
     emit(AuthLoading());
     await authRepository.logout();
+    _currentAuthenticatedUser = null;
     emit(Unauthenticated());
   }
 
@@ -108,7 +97,7 @@ class AuthCubit extends Cubit<AuthState> {
       emit(Unauthenticated());
     }
     catch (error) {
-      emit(AuthError(error.toString()));
+      emit(AuthError(message: error.toString()));
     }
   }
 }

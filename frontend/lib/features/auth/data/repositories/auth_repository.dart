@@ -11,10 +11,25 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class AuthRepository implements AuthRepositoryInterface {
   final FlutterSecureStorage storage = FlutterSecureStorage();
 
-  @override
-  Future<AuthenticatedUserEntity?> loginWithUsernamePassword(String username, String password) async {
+  // default error handler for all functions inside the repository
+  Future<T> _defaultErrorHandler<T>( String functionName, Future<T> Function() request) async {
+    try { return await request(); }
+    on DioException catch(error) { // If it was a DioException dio would have already logged it
+      late final String message;
+      if (error.response?.data is String) { message = error.response!.data; }
+      else { message = "DioException response.data was not of type string, reason for failure unknown"; }
+      throw Exception(message);
+    }
+    catch (error) {
+      appLogger.e("auth_repository.$functionName ran into an unexpected error", error: error);
+      rethrow;
+    }
+  }
 
-    try {
+  @override
+  Future<AuthenticatedUserEntity> loginWithUsernamePassword(String username, String password) async {
+    return _defaultErrorHandler('loginWithUsernamePassword', () async {
+
       final response = await dio.sendRequest<AuthenticatedUserModel>(
         'POST', 
         '/auth/login', 
@@ -26,28 +41,18 @@ class AuthRepository implements AuthRepositoryInterface {
 
       final AuthenticatedUserModel authenticatedUser = response.data;
 
-      storage.write(key: 'access_token', value: authenticatedUser.accessToken);
-      storage.write(key: 'refresh_token', value: authenticatedUser.refreshToken);
+      await storage.write(key: 'access_token', value: authenticatedUser.accessToken);
+      await storage.write(key: 'refresh_token', value: authenticatedUser.refreshToken);
 
       return authenticatedUser.toEntity();
-    }
-    on DioException catch (error) {
-      appLogger.w("login request failed", error: error);
-      throw Exception(error.message);
-    }
-    catch (error, stack) {
-      appLogger.e(
-        "dio failed to register user with uncaught exception",
-        error: error,
-        stackTrace: stack,
-      );
-      throw Exception('dio failed to catch exception');
-    }
+
+    });
   }
 
   @override
-  Future<AuthenticatedUserEntity?> registerWithUsernamePassword(String username, String email, String password) async {
-    try {
+  Future<AuthenticatedUserEntity> registerWithUsernamePassword(String username, String email, String password) async {
+    return _defaultErrorHandler('registerWithUsernamePassword', () async {
+
       final response = await dio.sendRequest<AuthenticatedUserModel>(
         'POST',
         '/auth/register', 
@@ -58,73 +63,56 @@ class AuthRepository implements AuthRepositoryInterface {
       );
 
       final AuthenticatedUserModel authenticatedUser = response.data;
-      storage.write(key: 'access_token', value: authenticatedUser.accessToken);
-      storage.write(key: 'refresh_token', value: authenticatedUser.refreshToken);
+      await storage.write(key: 'access_token', value: authenticatedUser.accessToken);
+      await storage.write(key: 'refresh_token', value: authenticatedUser.refreshToken);
 
       return authenticatedUser.toEntity();
-    }
-    on DioException catch (error){
-      appLogger.w("login request failed", error: error);
-      throw Exception(error.message);
-    }
-    catch (error, stack) {
-      appLogger.e(
-        "dio failed to register user with uncaught exception",
-        error: error,
-        stackTrace: stack,
-      );
-      throw Exception('dio failed to catch exception');
-    }
+
+    });
   }
   
   @override
   Future<void> deleteAccount() async{
-    try {
+    return _defaultErrorHandler('deleteAccount', () async {
+
       await dio.sendRequest('POST', '/auth/deleteAccount');
-    }
-    catch (error) {
-      throw Exception('Delete account failed $error');
-    }
+
+    });
   }
   
   @override
-  Future<UserEntity?> fetchAuthenticatedUser() async {
-    try {
+  Future<UserEntity> fetchAuthenticatedUser() async {
+    return _defaultErrorHandler('fetchAuthenticatedUser', () async {
+
       final response = await dio.sendRequest<UserModel>(
         'GET',
         '/auth/status',
         responseProcessor: (jsonObject) => UserModel.fromServerObject(jsonObject),
       );
       return response.data.toEntity();
-    }
-    on DioException catch(error) {
-      appLogger.w("server failed to return authentication status", error: error);
-      return null;
-    }
-    catch (error) {
-      appLogger.e("unexpected error occurred", error: error);
-      throw Exception('Status check returned and error');
-    }
+
+    });
   }
   
   @override
   Future<void> logout() async {
-    try {
-      await dio.sendRequest('POST', '/auth/logout');
-    }
-    catch (error) {
-      throw Exception('Failed to log out $error');
-    }
+    return _defaultErrorHandler('logout', () async {
+
+      await Future.wait([
+        storage.delete(key: 'access_token').catchError((error) { return appLogger.e("storage failed to delete access_token", error: error); }),
+        storage.delete(key: 'refresh_token').catchError((error) { return appLogger.e("storage failed to delete refresh_token", error: error); }),
+      ]);
+
+    });
   }
   
   @override
-  Future<String> sendPasswordResetEmail(String email) async {
-    try {
+  Future<String> sendPasswordResetEmail(String email) async { return _defaultErrorHandler('sendPasswordResetEmail', () async {
+    return _defaultErrorHandler('sendPasswordResetEmail', () async {
+
       await dio.sendRequest('POST', '/auth/resetPassword');
       return "Password reset email sent! Check your inbox.";
-    }
-    catch (error) {
-      throw Exception('failed to send password reset email $error');
-    }
-  }
+
+    });
+  });}
 }
