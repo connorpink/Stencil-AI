@@ -20,11 +20,42 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
   // default error handler for all functions inside the repository
   Future<T> _defaultErrorHandler<T>( String functionName, Future<T> Function() request) async {
     try { return await request(); }
-    on DioException catch(_) { rethrow; } // If it was a DioException dio would have already logged it
+    on DioException catch(error) { // If it was a DioException dio would have already logged it
+      late final String message;
+      if (error.response?.data is String) { message = error.response!.data; }
+      else { message = "DioException response.data was not of type string, reason for failure unknown"; }
+      throw Exception(message);
+    }
+    on FormatException catch(error) { // formatting exceptions are logged as they are happening
+      throw Exception(error);
+    }
     catch (error) {
       appLogger.e("artwork_repository.$functionName ran into an unexpected error", error: error);
       rethrow;
     }
+  }
+
+  // fetches images from the server for an art project
+  Future<List<List<Uint8List>>> _setupImageContentGridUsingServer(Map<String, dynamic> jsonArtwork) async {
+    
+    return Future.wait(
+      (jsonArtwork['stencilList'] as List).map((jsonStencil) async {
+
+        return Future.wait(
+          (jsonStencil['imageList'] as List).map((jsonImage) async {
+            
+            final String url = jsonImage['url'];
+            try {
+              final response = await http.get(Uri.parse(url));
+              if (response.statusCode == 200) { return response.bodyBytes; }
+              else { throw Exception('Failed to load image: ${response.statusCode}'); }
+            } 
+            catch (error) {
+              throw Exception('http request: $url returned: $error');
+            }
+          }).toList());
+      }).toList()
+    );
   }
 
   @override
@@ -71,15 +102,23 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
     Future<void> checkServerForAdditionalArtworks(List<ArtworkModel> artworkList) async {
       return _defaultErrorHandler('fetchAllArtworks', () async {
         
-        final response = await dio.sendRequest<Future<List<ArtworkModel>>>(
-          'GET', 
-          '/artwork/fetchAll',
-          responseProcessor: (serverObjectList) { 
-            return findNewObjects(artworkList, serverObjectList);
-          }
-        );
+        late final List<ArtworkModel> newArtworkList;
+        try {
+          final response = await dio.sendRequest<Future<List<ArtworkModel>>>(
+            'GET', 
+            '/artwork/fetchAll',
+            responseProcessor: (serverObjectList) {
+              final typedList = List<Map<String, dynamic>>.from((serverObjectList as List).map((item) => Map<String, dynamic>.from(item))); // covert the returned object to the correct type
+              return findNewObjects(artworkList, typedList);
+            }
+          );
 
-        final List<ArtworkModel> newArtworkList = await response.data;
+          newArtworkList = await response.data;
+        }
+        on FormatException catch(_) {
+          newArtworkList = [];
+        }
+
         for (ArtworkModel serverArtwork in newArtworkList) {
           _localDatasource.saveArtwork(serverArtwork.id, serverArtwork);
         }
@@ -121,7 +160,12 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
         return localArtwork.toEntity();
       }
 
-      final ArtworkModel serverArtwork = response.data;
+      final ArtworkModel? serverArtwork = response.data;
+
+      if (serverArtwork == null) {
+        appLogger.w('Server failed to return a valid artwork with serverId: ${localArtwork.serverId}');
+        return localArtwork.toEntity();
+      }
 
       if (serverArtwork.updatedAt.isAfter(localArtwork.updatedAt)) {
         _localDatasource.saveArtwork(id, serverArtwork);
@@ -142,6 +186,16 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
       final String clientId = _uuid.v4();
       late final ArtworkModel newArtwork;
 
+      // a blank, unaltered artwork, used for returning a new artwork object in the event the server does not provide one
+      final ArtworkModel defaultBlankArtwork = ArtworkModel(
+        id: clientId,
+        title: "Unsaved Artwork",
+        prompt: prompt, 
+        stencilList: [],
+        strokeList: [],
+        updatedAt: DateTime.now(),
+      );
+
       try {
         final response = await dio.sendRequest<Future<ArtworkModel>>(
           'POST',
@@ -156,16 +210,8 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
         );
         newArtwork = await response.data;
       }
-      on DioException catch(_) {
-        newArtwork = ArtworkModel(
-          id: clientId,
-          title: "Unsaved Artwork",
-          prompt: prompt, 
-          stencilList: [],
-          strokeList: [],
-          updatedAt: DateTime.now(),
-        );
-      }
+      on DioException catch(_) { newArtwork = defaultBlankArtwork; }
+      on FormatException catch(_) { newArtwork = defaultBlankArtwork; }
       
       _localDatasource.saveArtwork(clientId, newArtwork);
       
@@ -198,7 +244,7 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
   }
 
   @override
-  Future<void> deleteArtwork(ArtworkEntity artwork) {
+  Future<void> deleteArtwork(ArtworkEntity artwork) async {
     return _defaultErrorHandler("deleteArtwork", () async {
 
       _localDatasource.deleteArtwork(artwork.id);
@@ -222,27 +268,4 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
 
   @override
   Listenable get listenable => _localDatasource.listenable;
-
-  //function for local use only
-  Future<List<List<Uint8List>>> _setupImageContentGridUsingServer(Map<String, dynamic> jsonArtwork) async {
-    
-    return Future.wait(
-      (jsonArtwork['stencilList'] as List).map((jsonStencil) async {
-
-        return Future.wait(
-          (jsonStencil['imageList'] as List).map((jsonImage) async {
-            
-            final String url = jsonImage['url'];
-            try {
-              final response = await http.get(Uri.parse(url));
-              if (response.statusCode == 200) { return response.bodyBytes; }
-              else { throw Exception('Failed to load image: ${response.statusCode}'); }
-            } 
-            catch (error) {
-              throw Exception('http request: $url returned: $error');
-            }
-          }).toList());
-      }).toList()
-    );
-  }
 }

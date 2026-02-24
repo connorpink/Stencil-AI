@@ -85,7 +85,7 @@ class _MainAppState extends State<MainApp> {
     if (authCubit.state is Authenticated) { initialWindowLocation =  '/home'; }
     else { initialWindowLocation = '/auth'; }
 
-    // make sure user has been authenticated (or unauthenticated) and the minimum 6 seconds has been waited
+    // make sure the user has been authenticated (or unauthenticated) and the minimum 6 seconds has been waited
     setupDioAuth(() => authCubit.accessToken, () => authCubit.refreshToken, (String accessToken) => authCubit.accessToken = accessToken); // once user is fetched, setup dio properly
 
     await defaultWait;

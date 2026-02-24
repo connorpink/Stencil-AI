@@ -188,14 +188,13 @@ extension DioApiExtension on Dio {
           returnedObject = response.data as T;
         }
       }
-      catch (error, stack) {
+      catch (error) {
         appLogger.e(
-          'dio failed to convert returned object into type T, make sure the api being called is responding with the object your expecting. \n'
-          'Object returned: ${response.data}',
-          error: error,
-          stackTrace: stack,
+          'dio failed to convert returned data into type T, make sure the api being called is responding with the data your expecting. \n'
+          'Data returned: ${response.data}',
+          error: error
         );
-        rethrow;
+        throw FormatException("Unexpected data returned from the $method $path API, Check error logs for details");
       }
       
       return ApiResponse<T>(
@@ -209,8 +208,11 @@ extension DioApiExtension on Dio {
       appLogger.w('Request failed: $method $path', error: 'API error response: ${error.response?.data}');
       rethrow;
     }
+    on FormatException catch(_) {
+      rethrow; // already logged
+    }
     catch (error) {
-      appLogger.e("unexpectedError from dio", error: error);
+      appLogger.e("unexpected error from dio", error: error);
       rethrow;
     }
   }

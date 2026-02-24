@@ -20,6 +20,9 @@ class AuthRepository implements AuthRepositoryInterface {
       else { message = "DioException response.data was not of type string, reason for failure unknown"; }
       throw Exception(message);
     }
+    on FormatException catch(error) { // formatting exceptions are logged as they are happening
+      throw Exception(error);
+    }
     catch (error) {
       appLogger.e("auth_repository.$functionName ran into an unexpected error", error: error);
       rethrow;
@@ -30,7 +33,8 @@ class AuthRepository implements AuthRepositoryInterface {
   Future<AuthenticatedUserEntity> loginWithUsernamePassword(String username, String password) async {
     return _defaultErrorHandler('loginWithUsernamePassword', () async {
 
-      final response = await dio.sendRequest<AuthenticatedUserModel>(
+      late final ApiResponse<AuthenticatedUserModel> response;
+      response = await dio.sendRequest<AuthenticatedUserModel>(
         'POST', 
         '/auth/login', 
         data: {'username': username, 'password': password},

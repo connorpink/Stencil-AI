@@ -20,10 +20,22 @@ class DrawingGallery extends StatefulWidget {
 
 class _DrawingGalleryState extends State<DrawingGallery> {
   List<ArtworkEntity> _artworkList = [];
+  late final Listenable localStorageListenable;
+  
 
   @override
   void initState() {
     super.initState();
+    _fetchArtworkList();
+  }
+
+  void _fetchArtworkList() {
+    // setup listenable before attempting to interact with the artwork repository
+    localStorageListenable = widget.artworkRepository.listenable;
+    localStorageListenable.addListener(() {
+      widget.artworkRepository.fetchAllArtworks(checkServer: false); // dont need to recheck server after the initial fetchAll
+    });
+    _artworkList = widget.artworkRepository.fetchAllArtworks(checkServer: true); // after listenable is setup call fetchAllArtworks with a server check
   }
 
   void _openDrawing(String id) {

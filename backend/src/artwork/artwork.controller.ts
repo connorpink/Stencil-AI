@@ -55,9 +55,9 @@ export class ArtworkController {
    @UseGuards(JwtAuthGuard)
    async fetchAll() {
       const artworkList: ArtworkDto[] = [{
-         id: "test id",
-         title: "",
-         prompt: "",
+         id: "test_id",
+         title: "test art project",
+         prompt: "this is for testing purposes only",
          stencilList: [],
          strokeList: [],
          updatedAt: new Date(),
