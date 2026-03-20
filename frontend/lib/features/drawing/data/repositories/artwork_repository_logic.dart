@@ -231,12 +231,17 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
       // save artwork locally
       _localDatasource.saveArtwork(artworkModel.id, artworkModel); 
 
-      // attempt to save the artwork globally
-      await dio.sendRequest<bool>(
-        'POST',
-        '/artwork/save',
-        data: { 'artwork': artworkServerObject },
-      );
+      // save the artwork globally
+      try { 
+        dio.sendRequest<bool>(
+          'POST',
+          '/artwork/save',
+          data: { 'artwork': artworkServerObject },
+        );
+      }
+      on DioException catch(_) {
+        return;
+      }
 
       return;
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, HttpException, UseGuards, Req, Res, HttpCode } from '@nestjs/common';
+import { Body, Controller, Post, Get, HttpException, UseGuards, Req, Res, HttpCode, Delete } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from './guards/jwt.guard';
@@ -6,6 +6,7 @@ import { JwtAuthGuard } from './guards/jwt.guard';
 import { UserDto } from 'src/server.types';
 import { RequestRegisterDto } from './dto/register.dto';
 import { RequestLoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -19,20 +20,16 @@ export class AuthController {
    @HttpCode(200)
    @UseGuards(JwtAuthGuard)
    async status(@Req() req: Request) {
+
       return req.user;
    }
 
    @Post('register')
    @HttpCode(201)
-   async register(@Body() payload: RequestRegisterDto, @Res({passthrough: true}) res: Response) {
+   async register(@Body() payload: RequestRegisterDto) {
 
-      // create user inside the database
-      const createdUser = await this.authService.registerUser(payload);
-      if (!createdUser) { throw new HttpException('AuthService failed to create new user', 500); }
-
-      // create authentication tokens
-      const {accessToken, refreshToken} = await this.authService.createTokens(createdUser);
-      if (!accessToken || !refreshToken) { throw new HttpException('AuthService failed to create tokens', 500); }
+      const createdUser = await this.authService.registerUser(payload); // create user inside the database
+      const {accessToken, refreshToken} = await this.authService.createTokens(createdUser); // create authentication tokens
 
       return {
          accessToken: accessToken,
@@ -43,15 +40,10 @@ export class AuthController {
 
    @Post('login')
    @HttpCode(200)
-   async login(@Body() payload: RequestLoginDto, @Res({passthrough: true}) res: Response) {
+   async login(@Body() payload: RequestLoginDto) {
 
-      // verify users credentials
-      const validUser = await this.authService.validateUser(payload);
-      if (!validUser) { throw new HttpException('AuthService failed to validate user', 500); }
-
-      // create authentication tokens
-      const { accessToken, refreshToken } = await this.authService.createTokens(validUser);
-      if (!accessToken || !refreshToken) { throw new HttpException('AuthService failed to create tokens', 500); }
+      const validUser = await this.authService.validateUser(payload); // verify users credentials
+      const { accessToken, refreshToken } = await this.authService.createTokens(validUser); // create authentication tokens
 
       return {
          accessToken: accessToken,
@@ -60,29 +52,22 @@ export class AuthController {
       };
    }
 
-   @Post('deleteAccount')
+   @Delete()
    @HttpCode(201)
    @UseGuards(JwtAuthGuard)
    async deleteAccount(@Req() req: Request) {
 
-      const currentUser: UserDto | undefined = req.user;
-      if (!currentUser) { throw new HttpException('user must be signed in to delete account', 401) }
+      const currentUser: UserDto = req.user!;
       await this.authService.deleteAccount(currentUser);
 
       return { message: 'Account deleted' }
    }
 
    @Post('refresh')
-   async refresh(@Req() req: Request, @Res({passthrough: true}) res: Response) {
+   async refresh(@Body() payload: RefreshDto ) {
 
-      // make sure refresh token was provided
-      const refreshToken = req.cookies['refresh_token'];
-      if (!refreshToken) { throw new HttpException('No valid refresh token provided', 401) }
+      const updatedAccessToken = await this.authService.refresh(payload.refreshToken); // use the refresh token to obtain a new access token
 
-      // use the refresh token to obtain a new access token
-      const updatedToken = await this.authService.refresh(refreshToken);
-      res.cookie('access_token', updatedToken);
-
-      return { message: 'Token refresh successful' }
+      return { accessToken: updatedAccessToken }
    }
 }

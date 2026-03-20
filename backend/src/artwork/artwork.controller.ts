@@ -61,6 +61,14 @@ export class ArtworkController {
          stencilList: [],
          strokeList: [],
          updatedAt: new Date(),
+      },
+      {
+         id: "another_test",
+         title: "test art project",
+         prompt: "this is for testing purposes only",
+         stencilList: [],
+         strokeList: [],
+         updatedAt: new Date(),
       }];
       return artworkList;
    }

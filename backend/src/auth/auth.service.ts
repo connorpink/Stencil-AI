@@ -1,4 +1,4 @@
-import { HttpException, Injectable, Req } from '@nestjs/common';
+import { ConflictException, HttpException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'
 import lodash from 'lodash';
 import bcrypt from 'bcrypt';
@@ -24,16 +24,16 @@ export class AuthService {
       
       //check if username or email already exists inside the database
       try {
-         const fetchedUsername = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE username = $1", [username]);
-         if (fetchedUsername.rows.length >= 1) { throw new HttpException('Username already taken', 401); }
-
-         const fetchedEmail = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE email = $1", [email]);
-         if (fetchedEmail.rows.length >= 1) { throw new HttpException('Email already in use', 401); }
+         const fetchedUsername = await this.database.query<DatabaseUserDto>("SELECT * FROM users_public WHERE username = $1 OR email = $2", [username, email]);
+         if (fetchedUsername.rows.length >= 1) {
+            if (fetchedUsername.rows[0].username == username) { throw new ConflictException('Username already taken'); }
+            else { throw new ConflictException('Email already taken'); }
+         }
       }
       catch (error) {
          if (error instanceof HttpException) { throw error }
          console.error("\x1b[31m[AuthService] Server failed to check availability of the username and email\x1b[0m\n", error);
-         throw new HttpException('Internal server error', 500);
+         throw new InternalServerErrorException('Internal server error');
       }
 
       // hash the users password
@@ -44,7 +44,7 @@ export class AuthService {
       }
       catch (error) {
          console.error("\x1b[31m[AuthService] Server failed hash the users password\x1b[0m\n", error);
-         throw new HttpException('Internal server error', 500);
+         throw new InternalServerErrorException('Internal server error');
       }
 
       // add user to the database
@@ -54,11 +54,12 @@ export class AuthService {
             "INSERT INTO users_private (username, email, password) VALUES ($1, $2, $3) RETURNING id, username", 
             [username, email, hashedPassword]
          );
+         if (!createdUserData.rows[0]) { throw new InternalServerErrorException('User insert returned no result'); }
          createdUser = createdUserData.rows[0];
       }
       catch (error) {
-         console.error("\x1b[31m[AuthService] Server failed to add user to the database\x1b[0m\n", error);
-         throw new HttpException('Internal server error', 500);
+         console.error("\x1b[31m[AuthService] Server failed to fetched a user form the database\x1b[0m\n", error);
+         throw new InternalServerErrorException('Internal server error');
       }
       
       return createdUser;
@@ -67,36 +68,33 @@ export class AuthService {
    async validateUser({username, password}: RequestLoginDto) {
 
       // grab user from the database
-      let fetchedUser: DatabaseUserDto | null = null;
+      let fetchedUser: DatabaseUserDto;
       try {
-         const fetchedData = await this.database.query<DatabaseUserDto>("SELECT * FROM users_private WHERE username = $1", [username])
-         fetchedUser = fetchedData.rows[0] ?? null;
-         if (!fetchedUser) { throw new HttpException('Username not found', 404); }
+         const fetchedData = await this.database.query<DatabaseUserDto>("SELECT * FROM users_private WHERE username = $1", [username]);
+         if (!fetchedData.rows[0]) { throw new NotFoundException('Username not found'); }
+         fetchedUser = fetchedData.rows[0];
       }
       catch (error) {
          if (error instanceof HttpException ) { throw error; }
          console.error("\x1b[31m[AuthService] Server failed to fetch username from the database\x1b[0m\n", error);
-         throw new HttpException('Internal server error', 500);
+         throw new InternalServerErrorException('Internal server error');
       }
-
-      if (!fetchedUser) { throw new HttpException('Invalid credentials', 401); }
 
       // check if the client provided the correct password
       let correctPassword: boolean = false;
       try {
-         correctPassword = await bcrypt.compare(password, fetchedUser.password);
-         if (!correctPassword) { throw new HttpException('incorrect password', 401); }
+         const correctPassword: boolean = await bcrypt.compare(password, fetchedUser.password);
+         if (!correctPassword) { throw new UnauthorizedException('incorrect password'); }
       }
       catch (error) {
          if (error instanceof HttpException ) { throw error; }
          console.error("\x1b[31m[AuthService] Server failed to verify if the clients password was correct\x1b[0m\n", error);
-         throw new HttpException("Internal server error", 500);
+         throw new InternalServerErrorException("Internal server error");
       }
-      
-      if (correctPassword) {
-         const user = lodash.pick(fetchedUser, ['id', 'username']);
-         return user;
-      }
+
+      // make sure only the ID and Username are returned, DO NOT RETURN THE HASHED PASSWORD
+      const user = lodash.pick(fetchedUser, ['id', 'username']);
+      return user;
    }
 
    async createTokens({id, username}: UserDto) {
@@ -111,7 +109,7 @@ export class AuthService {
       }
       catch (error) {
          console.error("\x1b[31m[AuthService] Server failed to save refresh token inside the database\x1b[0m\n", error);
-         throw new HttpException("Internal server error", 500);
+         throw new InternalServerErrorException("Internal server error");
       }
       
       return {accessToken, refreshToken}
