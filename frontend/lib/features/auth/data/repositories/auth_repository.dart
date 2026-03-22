@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_frontend/core/core.dart';
 import 'package:flutter_frontend/features/auth/data/models/authenticated_user_model.dart';
 import 'package:flutter_frontend/features/auth/data/models/user_model.dart';
 import 'package:flutter_frontend/features/auth/domain/entities/authenticated_user_entity.dart';
@@ -15,13 +16,13 @@ class AuthRepository implements AuthRepositoryInterface {
   Future<T> _defaultErrorHandler<T>( String functionName, Future<T> Function() request) async {
     try { return await request(); }
     on DioException catch(error) { // If it was a DioException dio would have already logged it
-      late final String message;
-      if (error.response?.data is String) { message = error.response!.data; }
-      else { message = "DioException response.data was not of type string, reason for failure unknown"; }
-      throw Exception(message);
+      if (error.response == null) { rethrow; }
+      final String? message = error.response!.data['message'];
+      if(message != null) { throw ExpectedRepositoryException(message); }
+      else { rethrow; }
     }
-    on FormatException catch(error) { // formatting exceptions are logged as they are happening
-      throw Exception(error);
+    on FormatException { // formatting exceptions are logged as they are happening
+      rethrow;
     }
     catch (error) {
       appLogger.e("auth_repository.$functionName ran into an unexpected error", error: error);

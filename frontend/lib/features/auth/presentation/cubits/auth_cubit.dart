@@ -1,4 +1,5 @@
 // cubits are responsible for state management
+import 'package:flutter_frontend/core/core.dart';
 import 'package:flutter_frontend/features/auth/domain/entities/authenticated_user_entity.dart';
 import 'package:flutter_frontend/features/auth/domain/entities/user_entity.dart';
 import 'package:flutter_frontend/features/auth/domain/repositories/auth_repository_interface.dart';
@@ -48,12 +49,12 @@ class AuthCubit extends Cubit<AuthState> {
       _currentAuthenticatedUser = authenticatedUser;
       emit(Authenticated(authenticatedUser));
     }
+    on ExpectedRepositoryException catch(error) {
+      emit(AuthError(message: error.message));
+    }
     catch (error) {
-      if (error is String) { emit(AuthError(message: error)); }
-      else {
-        appLogger.e("AuthCubit login failed", error: error);
-        emit(AuthError()); 
-      }
+      appLogger.e("AuthCubit login failed", error: error);
+      emit(AuthError(message: "login failed, unknown issue"));
     }
   }
 
@@ -64,12 +65,12 @@ class AuthCubit extends Cubit<AuthState> {
       _currentAuthenticatedUser = authenticatedUser;
       emit(Authenticated(authenticatedUser));
     }
+    on ExpectedRepositoryException catch (error) {
+      emit(AuthError(message:  error.message));
+    }
     catch (error) {
-      if (error is String) { emit(AuthError(message: error)); }
-      else {
-        appLogger.e("AuthCubit register failed", error: error);
-        emit(AuthError()); 
-      }
+      appLogger.e("AuthCubit register failed", error: error);
+      emit(AuthError(message: "register failed, unknown issue")); 
     }
   }
 

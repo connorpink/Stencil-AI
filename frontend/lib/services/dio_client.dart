@@ -35,7 +35,7 @@ void setupDioAuth(String? Function() getAccessToken, String? Function() getRefre
     // attach JWT access_token to each request (if it exists)
     onRequest: (options, handler) {
       final accessToken = getAccessToken();
-      options.headers['Authorization'] = 'Bearer $accessToken';
+      if (accessToken != null) { options.headers['Authorization'] = 'Bearer $accessToken'; }
       handler.next(options);
     },
 

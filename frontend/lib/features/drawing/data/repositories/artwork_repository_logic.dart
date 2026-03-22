@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_frontend/core/core.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_frontend/features/drawing/data/datasources/artwork_local_datasource.dart';
@@ -21,16 +22,16 @@ class ArtworkRepositoryLogic implements ArtworkRepositoryInterface {
   Future<T> _defaultErrorHandler<T>( String functionName, Future<T> Function() request) async {
     try { return await request(); }
     on DioException catch(error) { // If it was a DioException dio would have already logged it
-      late final String message;
-      if (error.response?.data is String) { message = error.response!.data; }
-      else { message = "DioException response.data was not of type string, reason for failure unknown"; }
-      throw Exception(message);
+      if (error.response == null) { rethrow; }
+      final String? message = error.response!.data['message'];
+      if(message != null) { throw ExpectedRepositoryException(message); }
+      else { rethrow; }
     }
-    on FormatException catch(error) { // formatting exceptions are logged as they are happening
-      throw Exception(error);
+    on FormatException { // formatting exceptions are logged as they are happening
+      rethrow;
     }
     catch (error) {
-      appLogger.e("artwork_repository.$functionName ran into an unexpected error", error: error);
+      appLogger.e("auth_repository.$functionName ran into an unexpected error", error: error);
       rethrow;
     }
   }
