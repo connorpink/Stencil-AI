@@ -1,12 +1,12 @@
-import { Body, Controller, Post, Get, HttpException, UseGuards, Req, Res, HttpCode, Delete } from '@nestjs/common';
+import { Body, Controller, Post, Get, UseGuards, HttpCode, Delete } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import type { Request, Response } from 'express';
 import { JwtAuthGuard } from './guards/jwt.guard';
 
-import { UserDto } from 'src/server.types';
 import { RequestRegisterDto } from './dto/register.dto';
 import { RequestLoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import type { AuthenticatedUser } from './strategies/jwt.strategy';
+import { CurrentUser } from './decorators/authenticatedUser.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -19,9 +19,8 @@ export class AuthController {
    @Get('status')
    @HttpCode(200)
    @UseGuards(JwtAuthGuard)
-   async status(@Req() req: Request) {
-
-      return req.user;
+   async status(@CurrentUser() currentUser: AuthenticatedUser) {
+      return currentUser;
    }
 
    @Post('register')
@@ -53,17 +52,14 @@ export class AuthController {
    }
 
    @Delete()
-   @HttpCode(201)
+   @HttpCode(204)
    @UseGuards(JwtAuthGuard)
-   async deleteAccount(@Req() req: Request) {
-
-      const currentUser: UserDto = req.user!;
-      await this.authService.deleteAccount(currentUser);
-
-      return { message: 'Account deleted' }
+   async deleteAccount(@CurrentUser() currentUser: AuthenticatedUser): Promise<void> {
+      await this.authService.deleteAccount(currentUser.id);
    }
 
    @Post('refresh')
+   @HttpCode(200)
    async refresh(@Body() payload: RefreshDto ) {
 
       const updatedAccessToken = await this.authService.refresh(payload.refreshToken); // use the refresh token to obtain a new access token

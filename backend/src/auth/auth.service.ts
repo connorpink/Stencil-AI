@@ -5,10 +5,10 @@ import bcrypt from 'bcrypt';
 
 import { DatabaseService } from '../database/database.service'
 
-import { UserDto } from 'src/server.types';
 import { DatabaseRefreshTokenDto, DatabaseUserDto } from '../database/postgre.types'
 import { RequestLoginDto } from './dto/login.dto';
 import { RequestRegisterDto } from './dto/register.dto';
+import { UserDto } from './dto/user.dto';
 
 @Injectable()
 export class AuthService {
@@ -136,15 +136,15 @@ export class AuthService {
       return newToken;
    }
 
-   async deleteAccount(user: UserDto) {
+   async deleteAccount(userId: number) {
       // remove account and all refresh tokens associated with the account
       try {
-         await this.database.query("DELETE FROM users WHERE id = $1",[user.id]);
-         await this.database.query("DELETE FROM refresh_tokens WHERE user_id = $1", [user.id]);
+         await this.database.query("DELETE FROM users WHERE id = $1",[userId]);
+         await this.database.query("DELETE FROM refresh_tokens WHERE user_id = $1", [userId]);
       }
       catch (error) {
          console.error("\x1b[31m[AuthService] Server failed check the database for the refreshToken\x1b[0m\n", error);
-         throw new HttpException("Internal server error", 500);
+         throw new InternalServerErrorException("Internal server error");
       }
    }
 }

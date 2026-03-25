@@ -1,31 +1,56 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { OenoService } from 'src/oeno/oeno.service';
-import { ArtworkDto, StencilDto } from 'src/server.types';
 import { VolumeService } from 'src/volume/volume.service';
 import { Artwork } from 'src/database/mongoose_schema/artwork.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
-import { RouteCreateArtworkDto } from './dto/createArtwork.dto';
+import { ArtworkDto } from './dto/artwork.dto';
+import { ArtworkEntity } from './entities/artwork.entity';
+import { StencilEntity } from './entities/stencil.entity';
+import { CreateArtworkBodyDto } from './dto/createArtworkBody.dto';
 
 @Injectable()
 export class ArtworkService {
    private readonly oenoService: OenoService;
    private readonly volumeService: VolumeService;
-   private readonly artworkModel: Model<Artwork>;
+   private readonly databaseArtworkModel: Model<Artwork>;
 
    constructor (
       oenoService: OenoService, 
       volumeService: VolumeService, 
-      @InjectModel(Artwork.name) artworkModel: Model<Artwork>
+      @InjectModel(Artwork.name) databaseArtworkModel: Model<Artwork>
    ) {
       this.oenoService = oenoService;
       this.volumeService = volumeService;
-      this.artworkModel = artworkModel;
+      this.databaseArtworkModel = databaseArtworkModel;
    }
 
-   async createArtwork ({title, prompt}: RouteCreateArtworkDto): Promise<ArtworkDto> {
+   async  createDtoList (artworkEntityList: ArtworkEntity[]): Promise<ArtworkDto[]> {
+      return artworkEntityList.map(({ ownerId, ...remainingFields }) => { return remainingFields; });
+   };
+
+   async fetchArtworkList ({userId, id, limit}: {userId: number, id?: string, limit?: number}): Promise<ArtworkEntity[]> {
+
+      let query = this.databaseArtworkModel.find({
+         ownerId: userId,
+         ...(id && {_id: id}),
+      })
+      if (limit !== undefined) { query = query.limit(limit); }
+
+      try {
+         const response: ArtworkEntity[] = await query.lean();
+         if (response.length == 0) { throw new NotFoundException('No artworks inside the database meet the required parameters provided'); }
+         return response;
+      }
+      catch(error) {
+         console.error("\x1b[31m[artworkService] server failed to fetch artwork list from the database\x1b[0m\n", error);
+         throw new InternalServerErrorException('Internal server error');
+      }
+   }
+
+   async createArtwork ({userId, title, prompt}: CreateArtworkBodyDto & {userId: number}): Promise<ArtworkDto> {
       const stencilCount = 3;
-      let stencilList: StencilDto[] = []
+      let stencilList: StencilEntity[] = []
 
       // set the stencilList field for the artwork
       try {
@@ -123,8 +148,9 @@ export class ArtworkService {
 
       // save the artwork in the database
       try {
-         const savedArtwork = await new this.artworkModel({
+         const savedArtwork = await new this.databaseArtworkModel({
             title: title,
+            ownerId: userId,
             prompt: prompt,
             stencilList: stencilList,
             strokeList: [],
@@ -147,6 +173,55 @@ export class ArtworkService {
          }));
 
          throw new HttpException("Internal server error", 500);
+      }
+   }
+
+   async saveArtwork ({userId, artwork}: {userId: number, artwork: ArtworkDto}): Promise<void> {
+
+      let databaseArtwork: ArtworkEntity | null;
+      try {
+         databaseArtwork = await this.databaseArtworkModel.findOne({_id: artwork.id});
+      }
+      catch(error) {
+         console.error("\x1b[31m[artworkService] server failed to fetch artwork from the database\x1b[0m\n", error);
+         throw new InternalServerErrorException('Internal server error');
+      }
+
+      if (databaseArtwork == null) { throw new NotFoundException("The database does not contain an artwork with the provided id"); }
+      if (databaseArtwork.ownerId != userId) { throw new UnauthorizedException("Client does not have write access to the requested artwork"); }
+      
+      try {
+         await this.databaseArtworkModel.findOneAndUpdate(
+            { id: artwork.id, ownerId: userId },
+            { $set: artwork },
+         );
+      }
+      catch(error) {
+         console.error("\x1b[31m[artworkService] server failed to save artwork inside the database\x1b[0m\n", error);
+         throw new InternalServerErrorException('Internal server error');
+      }
+
+   }
+
+   async deleteArtwork ({userId, id}: {userId: number, id: string}): Promise<void> {
+      let databaseArtwork: ArtworkEntity | null;
+      try {
+         databaseArtwork = await this.databaseArtworkModel.findOne({_id: id}).lean();
+      }
+      catch(error) {
+         console.error("\x1b[31m[artworkService] server failed to fetch artwork from the database\x1b[0m\n", error);
+         throw new InternalServerErrorException('Internal server error');
+      }
+
+      if (databaseArtwork == null) { throw new NotFoundException("The database does not contain an artwork with the provided id"); }
+      if (databaseArtwork.ownerId != userId) { throw new UnauthorizedException("Client does not have write access to the requested artwork"); }
+
+      try {
+         await this.databaseArtworkModel.deleteOne({ownerId: userId, _id: id});
+      }
+      catch(error) {
+         console.error("\x1b[31m[artworkService] server failed  to delete the artwork from the database\x1b[0m\n", error);
+         throw new InternalServerErrorException('Internal server error');
       }
    }
 }

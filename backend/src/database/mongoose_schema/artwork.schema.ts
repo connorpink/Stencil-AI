@@ -7,6 +7,9 @@ export class Artwork {
    id: string;
 
    @Prop({ required: true })
+   ownerId: number;
+
+   @Prop({ required: true })
    title: string;
 
    @Prop({ required: true })
@@ -25,14 +28,14 @@ export class Artwork {
          is_stream: boolean;
          meta: any;
       }[];
-      position?: number[]; // Coordinates [x,y]
+      position?: [number, number]; // Coordinates [x,y]
       rotation?: number;
       scale?: number;
    }[];
 
    @Prop({ type: [Object], default: [] })
    strokeList: {
-      pointList: [][];
+      pointList: [number, number][];
       color: number;
       brushSize: number;
    }[]

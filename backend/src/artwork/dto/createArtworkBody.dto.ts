@@ -1,6 +1,7 @@
 import { IsNotEmpty, IsString } from "class-validator";
 
-export class RouteCreateArtworkDto {
+export class CreateArtworkBodyDto {
+   
    @IsString()
    @IsNotEmpty()
    title: string;

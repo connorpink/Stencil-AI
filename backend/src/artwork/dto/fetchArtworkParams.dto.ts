@@ -1,7 +1,8 @@
 import { IsMongoId, IsNotEmpty } from 'class-validator';
 
-export class RouteFetchArtworkDto {
+export class FetchArtworkParamsDto {
+  
   @IsMongoId()
   @IsNotEmpty()
-  artworkId: string;
+  id: string;
 }
